@@ -25,7 +25,7 @@ Highlights:
   - `homebrew/core`: Homebrew commit style (`foo 1.2.3`, `foo: ...`)
   - other taps: Conventional Commits style (`feat(...)`, `fix(...)`, `chore(...)`)
 - Supports explicit style overrides with `--style=auto|homebrew|conventional`.
-- Uses your normal git signing configuration for real commits. Only the test
+- Signs generated commits with `git commit -S` by default. Only the test
   harness disables signing inside temporary repositories.
 - Uses preview-first mode unless `--apply` is passed.
 
@@ -113,7 +113,7 @@ works in the target checkout.
   pull requests and status checks, push a feature branch and open a PR instead
   of expecting `prsync` to bypass repository rules.
 - Commit signing is not disabled by the tool. If your repo requires signed
-  commits, configure git signing normally and `prsync` will use it.
+  commits, `prsync` signs commits explicitly and uses your configured key.
 
 ## Typical Flow
 

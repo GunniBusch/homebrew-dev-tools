@@ -17,7 +17,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       run_cmd(dir, "git", "add", "--", "Formula/foo.rb", "Formula/bar.rb")
       run_cmd(dir, "git", "commit", "-m", "mixed commit")
 
-      repo = BrewDevTools::GitRepo.new(path: dir)
+      repo = BrewDevTools::GitRepo.new(path: dir, sign_commits: false)
       BrewDevTools::Prsync.new(
         repo: repo,
         stdout: StringIO.new,
@@ -45,7 +45,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       run_cmd(dir, "git", "add", "--", "Formula/foo.rb")
       run_cmd(dir, "git", "commit", "-m", "foo: add dependency")
 
-      repo = BrewDevTools::GitRepo.new(path: dir)
+      repo = BrewDevTools::GitRepo.new(path: dir, sign_commits: false)
       BrewDevTools::Prsync.new(repo: repo, stdout: StringIO.new, options: { apply: true }).run
 
       history = run_cmd(dir, "git", "log", "--format=%s", "origin/master..HEAD").lines.map(&:strip)
@@ -78,7 +78,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
         end
       end.new
 
-      repo = BrewDevTools::GitRepo.new(path: dir, shell: shell)
+      repo = BrewDevTools::GitRepo.new(path: dir, shell: shell, sign_commits: false)
       BrewDevTools::Prsync.new(repo: repo, shell: shell, stdout: StringIO.new, options: { apply: true, push: true }).run
 
       assert shell.commands.any? { |cmd| cmd == ["git", "push", "--force-with-lease", "origin", "feature"] }
@@ -118,7 +118,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       FileUtils.chmod("+x", fake_bin/"gh")
 
       shell = BrewDevTools::Shell.new(env: { "PATH" => "#{fake_bin}:#{ENV.fetch('PATH')}" })
-      repo = BrewDevTools::GitRepo.new(path: dir, shell: shell)
+      repo = BrewDevTools::GitRepo.new(path: dir, shell: shell, sign_commits: false)
       BrewDevTools::Prsync.new(
         repo: repo,
         shell: shell,

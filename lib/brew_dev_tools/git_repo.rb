@@ -27,9 +27,10 @@ module BrewDevTools
 
     attr_reader :path
 
-    def initialize(path:, shell: Shell.new)
+    def initialize(path:, shell: Shell.new, sign_commits: true)
       @path = File.expand_path(path)
       @shell = shell
+      @sign_commits = sign_commits
     end
 
     def ensure_git_repo!
@@ -180,7 +181,10 @@ module BrewDevTools
     end
 
     def commit!(message)
-      run_git!("commit", "-m", message)
+      args = ["commit"]
+      args << "-S" if @sign_commits
+      args += ["-m", message]
+      run_git!(*args)
     end
 
     def push_force_with_lease!(remote, branch)
