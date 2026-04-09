@@ -5,15 +5,15 @@ module BrewDevTools
     module_function
 
     def formula_path?(path)
-      path.match?(%r{\AFormula/[^/]+\.rb\z})
+      path.match?(%r{\AFormula/(?:[^/]+/)*[^/]+\.rb\z})
     end
 
     def formula_name_from_path(path)
       File.basename(path, ".rb")
     end
 
-    def formula_path(name)
-      "Formula/#{name}.rb"
+    def matching_formula_paths(name, paths)
+      paths.select { |path| formula_name_from_path(path) == name }
     end
 
     def extract_version(content)

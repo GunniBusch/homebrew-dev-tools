@@ -38,4 +38,23 @@ class GitRepoTest < BrewDevToolsTestCase
       assert_equal %w[bar foo], plan.formulas.map(&:formula)
     end
   end
+
+  def test_resolves_nested_formula_paths_for_explicit_formula_arguments
+    with_tmpdir do |dir|
+      init_repo(dir)
+      remote = init_bare_remote(dir)
+      attach_origin(dir, remote)
+      commit_formula(dir, "ripgrep", formula_content("ripgrep", "14.1.0"), "ripgrep 14.1.0 (new formula)", subdir: "r")
+      run_cmd(dir, "git", "push", "-u", "origin", "master")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+      path = formula_file_path("ripgrep", subdir: "r")
+      File.write(dir/path, formula_content("ripgrep", "14.1.1"))
+
+      repo = BrewDevTools::GitRepo.new(path: dir)
+      change_set = repo.inspect_change_set(formulas: ["ripgrep"])
+
+      assert_equal ["Formula/r/ripgrep.rb"], change_set.formula_states.map(&:path)
+      assert_equal ["ripgrep"], change_set.formula_states.map(&:formula)
+    end
+  end
 end
