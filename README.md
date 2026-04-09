@@ -15,7 +15,9 @@ Highlights:
 
 - Blocks ambiguous non-formula changes by default.
 - Detects mixed commits, same-formula squashes, and dirty amendments.
-- Generates Homebrew-style commit subjects for new formulae and version bumps.
+- Uses `auto` title style by default:
+  - `homebrew/core`: Homebrew commit style (`foo 1.2.3`, `foo: ...`)
+  - other taps: Conventional Commits style (`feat(...)`, `fix(...)`, `chore(...)`)
 - Uses preview-first mode unless `--apply` is passed.
 
 Example:
@@ -25,7 +27,13 @@ brew prsync
 brew prsync --apply
 brew prsync --apply --push
 brew prsync --apply --push --pr
+brew prsync --style=conventional
 ```
+
+Standards used:
+
+- Homebrew Formula Cookbook commit guidance for `homebrew/core`
+- Conventional Commits 1.0.0 for generic taps and repositories
 
 ### `brew wwdd`
 

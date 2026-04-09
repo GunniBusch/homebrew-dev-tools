@@ -25,7 +25,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       ).run
 
       history = run_cmd(dir, "git", "log", "--format=%s", "origin/master..HEAD").lines.map(&:strip)
-      assert_equal ["bar 2.0.0 (new formula)", "foo 1.0.1"], history.sort
+      assert_equal ["chore(foo): update to 1.0.1", "feat(bar): add new formula 2.0.0"], history.sort
     end
   end
 
@@ -49,7 +49,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       BrewDevTools::Prsync.new(repo: repo, stdout: StringIO.new, options: { apply: true }).run
 
       history = run_cmd(dir, "git", "log", "--format=%s", "origin/master..HEAD").lines.map(&:strip)
-      assert_equal ["foo: update formula"], history
+      assert_equal ["fix(foo): update formula"], history
     end
   end
 
@@ -128,7 +128,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
 
       logged = File.read(log_file)
       assert_includes logged, "pr create"
-      assert_includes logged, "--title foo 1.0.1"
+      assert_includes logged, "--title chore(foo): update to 1.0.1"
     end
   end
 end

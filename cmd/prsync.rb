@@ -18,6 +18,8 @@ module Homebrew
                description: "Create or update the GitHub pull request after rewriting."
         flag "--message=",
              description: "Override the generated commit subject for a single formula rewrite."
+        flag "--style=",
+             description: "Commit/PR title style: auto, homebrew, or conventional."
         flag "--base=",
              description: "Override the base branch ref used to compute the merge-base."
         named_args :formula
@@ -33,6 +35,7 @@ module Homebrew
             push: args.push?,
             pr: args.pr?,
             message: args.message,
+            message_style: args.style&.to_sym || :auto,
             base_ref: args.base,
             formulas: args.named.to_a.map(&:to_s),
           },

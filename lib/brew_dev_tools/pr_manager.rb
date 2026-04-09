@@ -50,6 +50,8 @@ module BrewDevTools
     def pr_title(plan)
       if plan.formulas.one?
         plan.formulas.first.subject
+      elsif plan.message_style == :conventional
+        conventional_pr_title(plan)
       else
         first = plan.formulas.first.formula
         "#{first} and #{plan.formulas.length - 1} more formula updates"
@@ -125,6 +127,19 @@ module BrewDevTools
           step.fetch("name") == step_name && step.fetch("success")
         end
       end
+    end
+
+    def conventional_pr_title(plan)
+      kinds = plan.formulas.map(&:subject_kind).uniq
+      prefix = if kinds == [:new_formula]
+        "feat"
+      elsif kinds == [:formula_fix]
+        "fix"
+      else
+        "chore"
+      end
+
+      "#{prefix}: update #{plan.formulas.length} formula#{plan.formulas.length == 1 ? '' : 'e'}"
     end
   end
 end

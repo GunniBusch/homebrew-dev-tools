@@ -19,6 +19,7 @@ module BrewDevTools
       :head_sha,
       :upstream_remote,
       :backup_branch,
+      :message_style,
       :formulas,
       keyword_init: true,
     )
@@ -33,6 +34,7 @@ module BrewDevTools
       @push = options.fetch(:push, false)
       @pr = options.fetch(:pr, false)
       @message = options[:message]
+      @message_style = options.fetch(:message_style, :auto)
       @base_ref = options[:base_ref]
       @formulas = options.fetch(:formulas, [])
       @pr_manager = options[:pr_manager] || PRManager.new(repo: repo, shell: shell, stdout: stdout)
@@ -51,12 +53,14 @@ module BrewDevTools
     end
 
     def build_plan(change_set)
+      resolved_style = resolve_message_style
       single_formula_override = @message && change_set.formula_states.length == 1
       formula_plans = change_set.formula_states.map do |formula_state|
         suggestion = CommitSubject.for_formula(
           formula: formula_state.formula,
           base_content: formula_state.base_content,
           final_content: formula_state.final_content,
+          style: resolved_style,
         )
         FormulaPlan.new(
           formula:            formula_state.formula,
@@ -75,6 +79,7 @@ module BrewDevTools
         head_sha:       change_set.head_sha,
         upstream_remote: change_set.upstream_remote,
         backup_branch:  backup_branch_name(change_set.branch),
+        message_style:  resolved_style,
         formulas:       formula_plans,
       )
     end
@@ -99,6 +104,7 @@ module BrewDevTools
     def print_preview(plan)
       @stdout.puts("Branch: #{plan.branch}")
       @stdout.puts("Base:   #{plan.base_ref} (#{plan.base_sha[0, 7]})")
+      @stdout.puts("Style:  #{plan.message_style}")
       @stdout.puts("Mode:   #{@apply ? 'apply' : 'preview'}")
       @stdout.puts
       plan.formulas.each do |formula_plan|
@@ -131,6 +137,12 @@ module BrewDevTools
     def backup_branch_name(branch)
       timestamp = @time_source.call.strftime("%Y%m%d%H%M%S")
       "brew-dev-tools/#{branch}-backup-#{timestamp}"
+    end
+
+    def resolve_message_style
+      return @message_style unless @message_style == :auto
+
+      repo.homebrew_core? ? :homebrew : :conventional
     end
   end
 end
