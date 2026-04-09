@@ -5,6 +5,17 @@ on:
     branches:
       - main
   pull_request:
+  merge_group:
+
+env:
+  HOMEBREW_DEVELOPER: 1
+  HOMEBREW_GITHUB_ACTIONS: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
 
 permissions:
   contents: read
@@ -12,15 +23,21 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/homebrew/brew:main
 
     steps:
+      - name: Set up Homebrew
+        id: setup-homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+        with:
+          core: false
+          cask: false
+
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.3"
+          persist-credentials: false
 
       - name: Run test suite
-        run: ruby -Ilib:test -e 'Dir["test/*_test.rb"].sort.each { |file| require File.expand_path(file) }'
+        run: brew ruby -- -Ilib:test -e 'Dir["test/*_test.rb"].sort.each { |file| require File.expand_path(file) }'
