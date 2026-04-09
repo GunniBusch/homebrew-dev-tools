@@ -2,6 +2,17 @@
 
 Tap-distributed Homebrew contributor helpers focused on formula PR workflow.
 
+## Repository Policy
+
+This repository itself uses Conventional Commits 1.0.0 for both commit messages
+and pull request titles. Treat that as mandatory project policy.
+
+- Commits in this repo must use a Conventional Commits type such as `feat:`,
+  `fix:`, `docs:`, `chore:`, or `ci:`
+- Pull request titles for this repo must follow the same format
+- `prsync` still generates Homebrew-native titles when you run it inside
+  `homebrew/core`, because that repository has a different upstream policy
+
 The repo ships two external commands:
 
 - `brew prsync`: normalize commit history, generate commit/PR titles, push, and
