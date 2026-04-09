@@ -1,4 +1,4 @@
-# brew-dev-tools
+# homebrew-dev-tools
 
 Tap-distributed Homebrew contributor helpers focused on formula PR workflow.
 
@@ -95,10 +95,11 @@ brew wwdd --online foo
 
 ## Install
 
-1. Turn this repository into a tap, for example `your-user/homebrew-dev-tools`.
+1. Use a standard tap repository name such as `your-user/homebrew-dev-tools`.
 2. Tap it:
 
 ```sh
+brew tap GunniBusch/dev-tools
 brew tap your-user/dev-tools /absolute/path/to/this/repo
 ```
 
