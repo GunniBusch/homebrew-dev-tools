@@ -8,6 +8,7 @@ module BrewDevTools
       @stdout = stdout
       @formulas = options.fetch(:formulas, [])
       @online = options.fetch(:online, false)
+      @install = options.fetch(:install, false)
       @brew_executable = options.fetch(:brew_executable, ENV.fetch("HOMEBREW_BREW_FILE", "brew"))
       @base_ref = options[:base_ref]
       @time_source = options[:time_source] || -> { Time.now.utc }
@@ -48,10 +49,10 @@ module BrewDevTools
 
       [
         { name: "style", command: [@brew_executable, "style", "--fix", "--formula", formula_state.formula], env: {} },
-        { name: "install", command: [@brew_executable, "install", "--build-from-source", formula_state.formula], env: { "HOMEBREW_NO_INSTALL_FROM_API" => "1" } },
+        (@install ? { name: "install", command: [@brew_executable, "install", "--build-from-source", formula_state.formula], env: { "HOMEBREW_NO_INSTALL_FROM_API" => "1" } } : nil),
         { name: "test", command: [@brew_executable, "test", formula_state.formula], env: {} },
         { name: "audit", command: [@brew_executable, "audit", audit_mode, *(@online ? ["--online"] : []), formula_state.formula], env: {} },
-      ]
+      ].compact
     end
 
     def run_step(step)

@@ -12,6 +12,8 @@ module Homebrew
         EOS
         switch "--online",
                description: "Pass --online through to brew audit."
+        switch "--install",
+               description: "Include brew install --build-from-source."
         flag "--base=",
              description: "Override the base branch ref used to compute changed formulae."
         named_args :formula
@@ -24,6 +26,7 @@ module Homebrew
           stdout: $stdout,
           options: {
             online: args.online?,
+            install: args.install?,
             base_ref: args.base,
             formulas: args.named.to_a.map(&:to_s),
           },
