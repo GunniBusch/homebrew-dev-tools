@@ -28,6 +28,12 @@ class BrewDevToolsTestCase < Minitest::Test
     FileUtils.mkdir_p(dir/"Formula")
   end
 
+  def formula_file_path(name, subdir: nil)
+    return "Formula/#{name}.rb" if subdir.nil? || subdir.empty?
+
+    "Formula/#{subdir}/#{name}.rb"
+  end
+
   def init_bare_remote(dir)
     remote = dir.parent/"#{dir.basename}-remote.git"
     run_cmd(dir.parent, "git", "init", "--bare", remote.to_s)
@@ -38,10 +44,11 @@ class BrewDevToolsTestCase < Minitest::Test
     run_cmd(dir, "git", "remote", "add", "origin", remote.to_s)
   end
 
-  def commit_formula(dir, name, content, message)
-    FileUtils.mkdir_p(dir/"Formula")
-    File.write(dir/"Formula/#{name}.rb", content)
-    run_cmd(dir, "git", "add", "--", "Formula/#{name}.rb")
+  def commit_formula(dir, name, content, message, subdir: nil)
+    path = formula_file_path(name, subdir: subdir)
+    FileUtils.mkdir_p(dir/File.dirname(path))
+    File.write(dir/path, content)
+    run_cmd(dir, "git", "add", "--", path)
     run_cmd(dir, "git", "commit", "-m", message)
   end
 

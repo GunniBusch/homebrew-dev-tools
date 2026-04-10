@@ -1,4 +1,4 @@
-# brew-dev-tools
+# homebrew-dev-tools
 
 Tap-distributed Homebrew contributor helpers focused on formula PR workflow.
 
@@ -95,10 +95,11 @@ brew wwdd --online foo
 
 ## Install
 
-1. Turn this repository into a tap, for example `your-user/homebrew-dev-tools`.
+1. Use a standard tap repository name such as `your-user/homebrew-dev-tools`.
 2. Tap it:
 
 ```sh
+brew tap GunniBusch/dev-tools
 brew tap your-user/dev-tools /absolute/path/to/this/repo
 ```
 
@@ -115,9 +116,9 @@ works in the target checkout.
 ## Safety model
 
 - `brew prsync` only operates inside git-backed tap repositories.
-- Only direct formula file changes under `Formula/*.rb` are considered owned by a
-  formula in v1.
-- Any changed file outside `Formula/*.rb` causes a hard failure.
+- Formula file changes under `Formula/**/*.rb`, including nested paths such as
+  `Formula/r/ripgrep.rb`, are considered owned by a formula in v1.
+- Any changed file outside `Formula/**/*.rb` causes a hard failure.
 - `--push` always uses `git push --force-with-lease`.
 - `--pr` requires a working `gh auth status`.
 - Protected branches still behave like protected branches. If `main` requires

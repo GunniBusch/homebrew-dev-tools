@@ -99,7 +99,7 @@ module BrewDevTools
       ambiguous_paths = (committed_ambiguous + dirty_ambiguous).uniq.sort
       unless ambiguous_paths.empty?
         raise AmbiguousChangeError,
-              "Changed files outside Formula/*.rb are not supported: #{ambiguous_paths.join(', ')}"
+              "Changed files outside Formula/**/*.rb are not supported: #{ambiguous_paths.join(', ')}"
       end
 
       all_formula_paths = (committed_formula_paths + dirty_formula_paths).uniq.sort
@@ -121,7 +121,7 @@ module BrewDevTools
       ordered_paths = if formulas.empty?
         order_from_history(commit_ids, commit_formula_map, requested_paths)
       else
-        formulas.map { |formula| FormulaInspector.formula_path(formula) }
+        requested_paths
       end
 
       formula_states = ordered_paths.map do |formula_path|
@@ -210,11 +210,18 @@ module BrewDevTools
     def resolve_requested_paths(all_formula_paths, formulas)
       return all_formula_paths if formulas.empty?
 
-      requested_paths = formulas.map { |formula| FormulaInspector.formula_path(formula) }
-      missing = requested_paths - all_formula_paths
-      unless missing.empty?
-        raise ValidationError,
-              "Requested formulae are not changed on this branch: #{missing.map { |path| FormulaInspector.formula_name_from_path(path) }.join(', ')}"
+      requested_paths = formulas.map do |formula|
+        matches = FormulaInspector.matching_formula_paths(formula, all_formula_paths)
+        if matches.empty?
+          raise ValidationError, "Requested formula `#{formula}` is not changed on this branch."
+        end
+
+        if matches.length > 1
+          raise ValidationError,
+                "Requested formula `#{formula}` matches multiple changed paths: #{matches.join(', ')}"
+        end
+
+        matches.first
       end
 
       extra = all_formula_paths - requested_paths

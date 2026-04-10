@@ -23,21 +23,15 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/homebrew/brew:main
 
     steps:
       - name: Set up Homebrew
-        id: setup-homebrew
+        id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
           cask: false
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run test suite
-        run: brew ruby -- -Ilib:test -e 'Dir["test/*_test.rb"].sort.each { |file| require File.expand_path(file) }'
+        run: ruby -Ilib:test -e 'Dir["test/*_test.rb"].sort.each { |file| require File.expand_path(file) }'
