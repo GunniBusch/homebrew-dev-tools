@@ -57,4 +57,20 @@ class GitRepoTest < BrewDevToolsTestCase
       assert_equal ["ripgrep"], change_set.formula_states.map(&:formula)
     end
   end
+
+  def test_detects_head_owner_from_branch_remote
+    with_tmpdir do |dir|
+      init_repo(dir)
+      remote = init_bare_remote(dir)
+      attach_origin(dir, remote)
+      run_cmd(dir, "git", "remote", "add", "gunnibusch", "git@github.com:GunniBusch/homebrew-core.git")
+      commit_formula(dir, "foo", formula_content("foo", "1.0.0"), "foo 1.0.0 (new formula)")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+      run_cmd(dir, "git", "config", "branch.feature.remote", "gunnibusch")
+
+      repo = BrewDevTools::GitRepo.new(path: dir)
+
+      assert_equal "GunniBusch", repo.head_owner_for_branch("feature")
+    end
+  end
 end
