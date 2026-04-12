@@ -14,6 +14,7 @@ module BrewDevTools
       title = pr_title(plan)
       body = pr_body(plan)
       existing_pr = current_pr(plan.branch)
+      head_reference = pr_head_reference(plan.branch)
 
       if existing_pr
         @stdout.puts("Updating PR ##{existing_pr.fetch('number')}...")
@@ -30,7 +31,7 @@ module BrewDevTools
           "--title", title,
           "--body", body,
           "--base", @repo.default_branch_name,
-          "--head", plan.branch,
+          "--head", head_reference,
           chdir: @repo.path,
         )
       end
@@ -39,8 +40,9 @@ module BrewDevTools
     private
 
     def current_pr(branch)
+      head_reference = pr_head_reference(branch)
       result = @shell.run!(
-        "gh", "pr", "view", branch, "--json", "number,title,url,state",
+        "gh", "pr", "view", head_reference, "--json", "number,title,url,state",
         chdir: @repo.path,
         allow_failure: true,
       )
@@ -50,6 +52,13 @@ module BrewDevTools
       return nil unless pr.fetch("state") == "OPEN"
 
       pr
+    end
+
+    def pr_head_reference(branch)
+      head_owner = @repo.head_owner_for_branch(branch)
+      return branch if head_owner.nil? || head_owner.empty?
+
+      "#{head_owner}:#{branch}"
     end
 
     def pr_title(plan)

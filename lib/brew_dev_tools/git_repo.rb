@@ -54,10 +54,24 @@ module BrewDevTools
     end
 
     def upstream_remote
-      branch = current_branch
+      branch_remote(current_branch)
+    end
+
+    def branch_remote(branch)
       result = run_git!("config", "--get", "branch.#{branch}.remote", allow_failure: true)
       remote = result.stdout.strip
       remote.empty? ? "origin" : remote
+    end
+
+    def remote_url(remote)
+      run_git!("remote", "get-url", remote).stdout.strip
+    rescue CommandError
+      nil
+    end
+
+    def head_owner_for_branch(branch)
+      remote = branch_remote(branch)
+      github_owner_from_remote_url(remote_url(remote))
     end
 
     def default_base_ref
@@ -206,6 +220,18 @@ module BrewDevTools
     end
 
     private
+
+    def github_owner_from_remote_url(url)
+      return nil if url.nil? || url.empty?
+
+      patterns = [
+        %r{\Ahttps?://github\.com/([^/]+)/[^/]+(?:\.git)?\z}i,
+        %r{\Agit@github\.com:([^/]+)/[^/]+(?:\.git)?\z}i,
+        %r{\Assh://git@github\.com/([^/]+)/[^/]+(?:\.git)?\z}i,
+      ]
+      match = patterns.lazy.map { |pattern| url.match(pattern) }.find(&:itself)
+      match && match[1]
+    end
 
     def resolve_requested_paths(all_formula_paths, formulas)
       return all_formula_paths if formulas.empty?

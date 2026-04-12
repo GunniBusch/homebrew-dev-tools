@@ -6,8 +6,9 @@ class PRManagerTest < BrewDevToolsTestCase
   class FakeRepo
     attr_reader :path
 
-    def initialize(path:)
+    def initialize(path:, head_owner: nil)
       @path = path
+      @head_owner = head_owner
     end
 
     def homebrew_core?
@@ -20,6 +21,10 @@ class PRManagerTest < BrewDevToolsTestCase
 
     def git_dir
       File.join(path, ".git")
+    end
+
+    def head_owner_for_branch(_branch)
+      @head_owner
     end
   end
 
@@ -99,7 +104,7 @@ class PRManagerTest < BrewDevToolsTestCase
 
   def test_updates_existing_open_pr_for_current_branch
     with_tmpdir do |dir|
-      repo = FakeRepo.new(path: dir.to_s)
+      repo = FakeRepo.new(path: dir.to_s, head_owner: "gunnibusch")
       shell = CaptureShell.new(pr_view_result: { "number" => 42, "title" => "old", "url" => "https://example.test/pr/42", "state" => "OPEN" })
       manager = BrewDevTools::PRManager.new(repo: repo, shell: shell, stdout: StringIO.new)
       plan = BrewDevTools::Prsync::Plan.new(
@@ -124,6 +129,8 @@ class PRManagerTest < BrewDevToolsTestCase
 
       manager.sync_pr!(plan)
 
+      view = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "view"] }
+      assert_includes view, "gunnibusch:feature"
       edit = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "edit"] }
       refute_nil edit
       assert_includes edit, "42"
@@ -133,7 +140,7 @@ class PRManagerTest < BrewDevToolsTestCase
 
   def test_creates_new_pr_when_branch_has_no_open_pr
     with_tmpdir do |dir|
-      repo = FakeRepo.new(path: dir.to_s)
+      repo = FakeRepo.new(path: dir.to_s, head_owner: "gunnibusch")
       shell = CaptureShell.new
       manager = BrewDevTools::PRManager.new(repo: repo, shell: shell, stdout: StringIO.new)
       plan = BrewDevTools::Prsync::Plan.new(
@@ -158,10 +165,12 @@ class PRManagerTest < BrewDevToolsTestCase
 
       manager.sync_pr!(plan)
 
+      view = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "view"] }
+      assert_includes view, "gunnibusch:feature"
       create = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "create"] }
       refute_nil create
       assert_includes create, "--head"
-      assert_includes create, "feature"
+      assert_includes create, "gunnibusch:feature"
     end
   end
 end
