@@ -77,10 +77,13 @@ Runs formula contributor checks that complement the built-in `brew lgtm` dev
 command:
 
 1. `brew style --fix --formula <formula>`
-2. `HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source <formula>`
-3. `brew test <formula>`
-4. `brew audit --new <formula>` for new formulae, otherwise
+2. `brew test <formula>`
+3. `brew audit --new <formula>` for new formulae, otherwise
    `brew audit --strict <formula>`
+
+Pass `--install` when you also want:
+
+`HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source <formula>`
 
 The latest validation report is stored in `.git/brew-dev-tools/wwdd-last.json`
 so `brew prsync --pr` can include it in the PR body.
@@ -90,6 +93,7 @@ Example:
 ```sh
 brew wwdd
 brew wwdd foo
+brew wwdd --install foo
 brew wwdd --online foo
 ```
 
