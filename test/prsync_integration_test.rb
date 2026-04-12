@@ -108,8 +108,8 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
             exit 0
           elif [ "$1" = "repo" ]; then
             echo master
-          elif [ "$1" = "pr" ] && [ "$2" = "list" ]; then
-            echo "[]"
+          elif [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+            exit 1
           else
             exit 0
           fi

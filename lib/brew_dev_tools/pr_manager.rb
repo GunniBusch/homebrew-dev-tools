@@ -40,11 +40,16 @@ module BrewDevTools
 
     def current_pr(branch)
       result = @shell.run!(
-        "gh", "pr", "list", "--head", branch, "--json", "number,title,url",
+        "gh", "pr", "view", branch, "--json", "number,title,url,state",
         chdir: @repo.path,
+        allow_failure: true,
       )
-      prs = JSON.parse(result.stdout)
-      prs.first
+      return nil unless result.success?
+
+      pr = JSON.parse(result.stdout)
+      return nil unless pr.fetch("state") == "OPEN"
+
+      pr
     end
 
     def pr_title(plan)

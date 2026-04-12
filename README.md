@@ -39,6 +39,8 @@ Highlights:
 - Signs generated commits with `git commit -S` by default. Only the test
   harness disables signing inside temporary repositories.
 - Uses preview-first mode unless `--apply` is passed.
+- `--pr` is branch-based: if GitHub already has an open PR for the current
+  branch, `prsync` updates it; otherwise it creates a new PR for that branch.
 
 Example:
 
