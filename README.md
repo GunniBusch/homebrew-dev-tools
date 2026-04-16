@@ -18,6 +18,7 @@ The repo ships two external commands:
 - `brew prsync`: normalize commit history, generate commit/PR titles, push, and
   optionally create or update a PR
 - `brew wwdd`: run the formula checks you usually want before sending a PR
+- `brew bottles`: inspect or compare bottle metadata without installing formulae
 
 ## Commands
 
@@ -119,6 +120,29 @@ brew wwdd
 brew wwdd foo
 brew wwdd --install foo
 brew wwdd --online foo
+```
+
+### `brew bottles`
+
+Browses stable bottle metadata directly from `brew info --json=v2`, and can
+also inspect the contents of a specific bottle archive without installing it.
+
+Use it to:
+
+- list available stable bottle tags, cellar values, rebuild number, and root
+  URL for one or more formulae
+- inspect the file list inside a selected bottle archive with `--contents`
+- compare either bottle metadata or the archive contents for two formulae
+- optionally include the full bottle blob URLs
+
+Examples:
+
+```sh
+brew bottles zstd
+brew bottles --urls zstd
+brew bottles --contents --tag arm64_sequoia zstd
+brew bottles --compare zstd xz
+brew bottles --compare --contents --tag arm64_sequoia zstd xz
 ```
 
 ## Install
