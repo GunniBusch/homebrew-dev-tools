@@ -32,3 +32,14 @@ The `brew prsync` command is different: when you run it against
 `homebrew/core`, it intentionally generates Homebrew-style commit subjects
 because that repository requires them. For generic taps, `prsync` defaults back
 to Conventional Commits.
+
+The generated templates are:
+
+- `homebrew/core`
+  - version bump: `<formula> <version>`
+  - new formula: `<formula> <version> (new formula)`
+  - formula fix: `<formula>: update formula`
+- other taps
+  - version bump: `chore(<formula>): update to <version>`
+  - new formula: `feat(<formula>): add new formula <version>`
+  - formula fix: `fix(<formula>): update formula`

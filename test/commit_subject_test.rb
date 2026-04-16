@@ -3,6 +3,22 @@
 require_relative "test_helper"
 
 class CommitSubjectTest < BrewDevToolsTestCase
+  def test_homebrew_templates
+    templates = BrewDevTools::CommitSubject.templates_for(:homebrew)
+
+    assert_equal "%<formula>s %<version>s (new formula)", templates.fetch(:new_formula)
+    assert_equal "%<formula>s %<version>s", templates.fetch(:version_bump)
+    assert_equal "%<formula>s: update formula", templates.fetch(:formula_fix)
+  end
+
+  def test_conventional_templates
+    templates = BrewDevTools::CommitSubject.templates_for(:conventional)
+
+    assert_equal "feat(%<formula>s): add new formula %<version>s", templates.fetch(:new_formula)
+    assert_equal "chore(%<formula>s): update to %<version>s", templates.fetch(:version_bump)
+    assert_equal "fix(%<formula>s): update formula", templates.fetch(:formula_fix)
+  end
+
   def test_new_formula_subject
     suggestion = BrewDevTools::CommitSubject.for_formula(
       formula: "foo",

@@ -19,7 +19,7 @@ module Homebrew
         flag "--message=",
              description: "Override the generated commit subject for a single formula rewrite."
         flag "--style=",
-             description: "Commit/PR title style: auto, homebrew, or conventional."
+             description: "Commit/PR title style: auto, homebrew (`foo 1.2.3`), or conventional (`chore(foo): update to 1.2.3`)."
         flag "--base=",
              description: "Override the base branch ref used to compute the merge-base."
         named_args :formula
