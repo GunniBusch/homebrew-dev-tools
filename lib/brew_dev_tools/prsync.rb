@@ -62,12 +62,17 @@ module BrewDevTools
           final_content: formula_state.final_content,
           style: resolved_style,
         )
+        subject, generated_summary = resolved_subject(
+          formula_state: formula_state,
+          suggestion: suggestion,
+          single_formula_override: single_formula_override,
+        )
         FormulaPlan.new(
           formula:            formula_state.formula,
           path:               formula_state.path,
-          subject:            single_formula_override ? @message : suggestion.subject,
+          subject:            subject,
           subject_kind:       suggestion.kind,
-          generated_summary:  suggestion.generated_summary,
+          generated_summary:  generated_summary,
           operations:         operations_for(formula_state),
         )
       end
@@ -85,6 +90,16 @@ module BrewDevTools
     end
 
     private
+
+    def resolved_subject(formula_state:, suggestion:, single_formula_override:)
+      return [@message, false] if single_formula_override
+
+      if formula_state.existing_subject && @message.nil?
+        return [formula_state.existing_subject, false]
+      end
+
+      [suggestion.subject, suggestion.generated_summary]
+    end
 
     def operations_for(formula_state)
       operations = []
