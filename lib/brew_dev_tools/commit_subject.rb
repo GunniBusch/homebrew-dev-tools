@@ -4,8 +4,25 @@ module BrewDevTools
   class CommitSubject
     Suggestion = Struct.new(:subject, :kind, :generated_summary, keyword_init: true)
     VALID_STYLES = [:homebrew, :conventional].freeze
+    TEMPLATES = {
+      homebrew: {
+        new_formula: "%<formula>s %<version>s (new formula)",
+        version_bump: "%<formula>s %<version>s",
+        formula_fix: "%<formula>s: update formula",
+      },
+      conventional: {
+        new_formula: "feat(%<formula>s): add new formula %<version>s",
+        version_bump: "chore(%<formula>s): update to %<version>s",
+        formula_fix: "fix(%<formula>s): update formula",
+      },
+    }.freeze
 
     ALLOWED_VERSION_BUMP_PREFIXES = /\A\s*(url|sha256|version|mirror)\b/.freeze
+
+    def self.templates_for(style)
+      validate_style!(style)
+      TEMPLATES.fetch(style).dup
+    end
 
     def self.for_formula(formula:, base_content:, final_content:, style:)
       validate_style!(style)
@@ -48,49 +65,41 @@ module BrewDevTools
     end
 
     def self.new_formula_suggestion(formula:, version:, style:)
-      if style == :homebrew
-        version_label = version || "new formula"
-        return Suggestion.new(
-          subject: "#{formula} #{version_label} (new formula)",
-          kind: :new_formula,
-          generated_summary: false,
-        )
+      template = templates_for(style).fetch(:new_formula)
+      subject = if version
+        format(template, formula: formula, version: version)
+      elsif style == :homebrew
+        "#{formula} new formula (new formula)"
+      else
+        "feat(#{formula}): add new formula"
       end
 
-      description = version ? "add new formula #{version}" : "add new formula"
       Suggestion.new(
-        subject: "feat(#{formula}): #{description}",
+        subject: subject,
         kind: :new_formula,
         generated_summary: false,
       )
     end
 
     def self.version_bump_suggestion(formula:, version:, style:)
-      if style == :homebrew
-        return Suggestion.new(
-          subject: "#{formula} #{version}",
-          kind: :version_bump,
-          generated_summary: false,
-        )
+      subject = if version
+        format(templates_for(style).fetch(:version_bump), formula: formula, version: version)
+      elsif style == :homebrew
+        "#{formula} update formula version"
+      else
+        "chore(#{formula}): update formula version"
       end
 
-      description = version ? "update to #{version}" : "update formula version"
       Suggestion.new(
-        subject: "chore(#{formula}): #{description}",
+        subject: subject,
         kind: :version_bump,
         generated_summary: false,
       )
     end
 
     def self.formula_fix_suggestion(formula:, style:)
-      subject = if style == :homebrew
-        "#{formula}: update formula"
-      else
-        "fix(#{formula}): update formula"
-      end
-
       Suggestion.new(
-        subject: subject,
+        subject: format(templates_for(style).fetch(:formula_fix), formula: formula),
         kind: :formula_fix,
         generated_summary: true,
       )

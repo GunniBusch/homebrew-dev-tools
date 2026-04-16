@@ -75,6 +75,24 @@ Default generated subjects:
 PR titles follow the same rule set. For multi-formula non-Homebrew repos,
 `prsync` generates a Conventional Commits-style rollup title.
 
+Naming templates:
+
+- `homebrew/core`
+  - version bump commit or single-formula PR title: `<formula> <version>`
+  - new formula commit or single-formula PR title: `<formula> <version> (new formula)`
+  - formula fix commit or single-formula PR title: `<formula>: update formula`
+- other taps
+  - version bump commit or single-formula PR title: `chore(<formula>): update to <version>`
+  - new formula commit or single-formula PR title: `feat(<formula>): add new formula <version>`
+  - formula fix commit or single-formula PR title: `fix(<formula>): update formula`
+
+For multi-formula PR titles:
+
+- `homebrew/core`: `<first-formula> and N more formula updates`
+- other taps: `chore: update N formulae` unless every formula is a new formula
+  or every formula is a fix-only change, in which case the prefix becomes
+  `feat:` or `fix:`
+
 ### `brew wwdd`
 
 Runs formula contributor checks that complement the built-in `brew lgtm` dev
