@@ -49,7 +49,29 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       BrewDevTools::Prsync.new(repo: repo, stdout: StringIO.new, options: { apply: true }).run
 
       history = run_cmd(dir, "git", "log", "--format=%s", "origin/master..HEAD").lines.map(&:strip)
-      assert_equal ["fix(foo): update formula"], history
+      assert_equal ["foo 1.0.1"], history
+    end
+  end
+
+  def test_reuses_existing_subject_when_amending_single_formula_commit
+    with_tmpdir do |dir|
+      init_repo(dir)
+      remote = init_bare_remote(dir)
+      attach_origin(dir, remote)
+      commit_formula(dir, "foo", formula_content("foo", "1.0.0"), "foo 1.0.0 (new formula)")
+      run_cmd(dir, "git", "push", "-u", "origin", "master")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+
+      File.write(dir/"Formula/foo.rb", formula_content("foo", "1.0.1"))
+      run_cmd(dir, "git", "add", "--", "Formula/foo.rb")
+      run_cmd(dir, "git", "commit", "-m", "foo 1.0.1")
+      File.write(dir/"Formula/foo.rb", formula_content("foo", "1.0.1", body: "depends_on \"bar\"\n"))
+
+      repo = BrewDevTools::GitRepo.new(path: dir, sign_commits: false)
+      BrewDevTools::Prsync.new(repo: repo, stdout: StringIO.new, options: { apply: true }).run
+
+      history = run_cmd(dir, "git", "log", "--format=%s", "origin/master..HEAD").lines.map(&:strip)
+      assert_equal ["foo 1.0.1"], history
     end
   end
 
@@ -154,7 +176,7 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       ).run
 
       history = run_cmd(dir, "git", "log", "--format=%s", "origin/master..HEAD").lines.map(&:strip)
-      assert_equal ["chore(ripgrep): update to 14.1.1"], history
+      assert_equal ["ripgrep 14.1.1"], history
     end
   end
 end

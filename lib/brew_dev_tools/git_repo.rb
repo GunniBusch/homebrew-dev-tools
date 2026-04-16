@@ -7,6 +7,7 @@ module BrewDevTools
       :path,
       :new_formula,
       :commits,
+      :existing_subject,
       :split_commit_count,
       :dirty,
       :base_content,
@@ -145,6 +146,7 @@ module BrewDevTools
           path:               formula_path,
           new_formula:        !path_exists_at?(base_sha, formula_path),
           commits:            commit_list,
+          existing_subject:   reusable_commit_subject(commit_list, commit_formula_map),
           split_commit_count: commit_list.count { |commit| commit_formula_map.fetch(commit).size > 1 },
           dirty:              dirty_formula_paths.include?(formula_path),
           base_content:       file_content_at(base_sha, formula_path),
@@ -257,6 +259,13 @@ module BrewDevTools
       end
 
       requested_paths
+    end
+
+    def reusable_commit_subject(commit_list, commit_formula_map)
+      reusable_commit = commit_list.find { |commit| commit_formula_map.fetch(commit).length == 1 }
+      return nil unless reusable_commit
+
+      run_git!("show", "-s", "--format=%s", reusable_commit).stdout.strip
     end
 
     def order_from_history(commit_ids, commit_formula_map, requested_paths)
