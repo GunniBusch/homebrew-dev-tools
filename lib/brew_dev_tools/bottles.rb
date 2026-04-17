@@ -14,7 +14,7 @@ module BrewDevTools
       @show_contents = options.fetch(:contents, false)
       @show_urls = options.fetch(:show_urls, false)
       @tag = options[:tag]
-      @brew_executable = options.fetch(:brew_executable, ENV.fetch("HOMEBREW_BREW_FILE", "brew"))
+      @brew_executable = options.fetch(:brew_executable, "brew")
       @archive_fetcher = archive_fetcher || method(:fetch_archive_entries)
     end
 
