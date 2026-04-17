@@ -4,9 +4,10 @@ require_relative "test_helper"
 
 class BottlesTest < BrewDevToolsTestCase
   class CaptureShell < BrewDevTools::Shell
-    def initialize(payload:)
+    def initialize(payload:, cache_paths: {})
       super()
       @payload = payload
+      @cache_paths = cache_paths
       @commands = []
     end
 
@@ -14,6 +15,26 @@ class BottlesTest < BrewDevToolsTestCase
 
     def run!(*command, **_kwargs)
       @commands << command
+      if command[1] == "--cache"
+        formula = command.last
+        tag = command.find { |arg| arg.start_with?("--bottle-tag=") }.split("=", 2).last
+        return BrewDevTools::Shell::Result.new(
+          command: command,
+          status: 0,
+          stdout: "#{@cache_paths.fetch([formula, tag], "/tmp/#{formula}-#{tag}.tar.gz")}\n",
+          stderr: "",
+        )
+      end
+
+      if command[1] == "fetch"
+        return BrewDevTools::Shell::Result.new(
+          command: command,
+          status: 0,
+          stdout: "",
+          stderr: "",
+        )
+      end
+
       BrewDevTools::Shell::Result.new(
         command: command,
         status: 0,
@@ -25,9 +46,12 @@ class BottlesTest < BrewDevToolsTestCase
 
   def test_lists_bottle_archive_contents_for_tag
     stdout = StringIO.new
-    shell = CaptureShell.new(payload: { "formulae" => [formula_payload("foo")] })
-    archive_fetcher = lambda do |url|
-      assert_equal "https://ghcr.io/v2/homebrew/core/foo/blobs/sha256:aaaaaaaa", url
+    shell = CaptureShell.new(
+      payload: { "formulae" => [formula_payload("foo")] },
+      cache_paths: { ["foo", "arm64_sequoia"] => "/tmp/foo-arm64_sequoia.tar.gz" },
+    )
+    archive_fetcher = lambda do |path|
+      assert_equal "/tmp/foo-arm64_sequoia.tar.gz", path
       [
         "foo/1.2.3/.brew/foo.rb",
         "foo/1.2.3/bin/foo",
@@ -46,6 +70,7 @@ class BottlesTest < BrewDevToolsTestCase
     assert_includes output, "tag: arm64_sequoia"
     assert_includes output, "entries: 2"
     assert_includes output, "foo/1.2.3/bin/foo"
+    assert_includes shell.commands, ["brew", "--cache", "--bottle-tag=arm64_sequoia", "foo"]
   end
 
   def test_lists_stable_bottle_metadata
@@ -123,16 +148,22 @@ class BottlesTest < BrewDevToolsTestCase
 
   def test_compares_bottle_archive_contents
     stdout = StringIO.new
-    shell = CaptureShell.new(payload: { "formulae" => [formula_payload("foo"), formula_payload("bar")] })
-    archive_fetcher = lambda do |url|
-      case url
-      when "https://ghcr.io/v2/homebrew/core/foo/blobs/sha256:aaaaaaaa"
+    shell = CaptureShell.new(
+      payload: { "formulae" => [formula_payload("foo"), formula_payload("bar")] },
+      cache_paths: {
+        ["foo", "arm64_sequoia"] => "/tmp/foo-arm64_sequoia.tar.gz",
+        ["bar", "arm64_sequoia"] => "/tmp/bar-arm64_sequoia.tar.gz",
+      },
+    )
+    archive_fetcher = lambda do |path|
+      case path
+      when "/tmp/foo-arm64_sequoia.tar.gz"
         [
           "foo/1.2.3/.brew/foo.rb",
           "foo/1.2.3/bin/foo",
           "foo/1.2.3/share/man/man1/foo.1",
         ]
-      when "https://ghcr.io/v2/homebrew/core/bar/blobs/sha256:aaaaaaaa"
+      when "/tmp/bar-arm64_sequoia.tar.gz"
         [
           "foo/1.2.3/.brew/foo.rb",
           "foo/1.2.3/bin/foo",
