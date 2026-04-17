@@ -11,11 +11,13 @@ module Homebrew
           Browse stable bottle metadata, inspect bottle archive contents, or compare two bottles without installing them.
         EOS
         switch "--compare",
-               description: "Compare exactly two formulae instead of listing bottle metadata."
+               description: "Compare two formulae, or compare two tags for one formula."
         switch "--contents",
                description: "Inspect the contents of a specific bottle archive."
         flag "--tag=",
              description: "Bottle tag to inspect or compare, for example `arm64_sequoia`."
+        flag "--against-tag=",
+             description: "Second bottle tag to compare against for the same formula."
         switch "--urls",
                description: "Include full bottle URLs in the output."
         named_args :formula
@@ -29,6 +31,7 @@ module Homebrew
             contents: args.contents?,
             show_urls: args.urls?,
             tag: args.tag,
+            against_tag: args.against_tag,
             formulas: args.named.to_a.map(&:to_s),
           },
         ).run
