@@ -13,7 +13,9 @@ module BrewDevTools
     end
 
     def run!(*command, chdir: nil, env: {}, allow_failure: false)
-      stdout, stderr, status = Open3.capture3(@env.merge(env), *command, chdir: chdir)
+      options = {}
+      options[:chdir] = chdir unless chdir.nil?
+      stdout, stderr, status = Open3.capture3(@env.merge(env), *command, **options)
       result = Result.new(
         command: command,
         status: status.exitstatus,
