@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "open-uri"
 require "rubygems/package"
 require "zlib"
 
@@ -15,7 +14,7 @@ module BrewDevTools
       @show_urls = options.fetch(:show_urls, false)
       @tag = options[:tag]
       @brew_executable = options.fetch(:brew_executable, "brew")
-      @archive_fetcher = archive_fetcher || method(:fetch_archive_entries)
+      @archive_fetcher = archive_fetcher || method(:read_archive_entries)
     end
 
     def run
@@ -122,7 +121,7 @@ module BrewDevTools
 
     def print_formula_contents(formula)
       file = bottle_file_for(formula, @tag)
-      entries = @archive_fetcher.call(file.fetch("url"))
+      entries = archive_entries_for(formula)
 
       @stdout.puts("#{formula.fetch('full_name')} #{formula_pkg_version(formula)}")
       @stdout.puts("  tag: #{@tag}")
@@ -135,8 +134,8 @@ module BrewDevTools
     def print_compare_contents(left, right)
       left_file = bottle_file_for(left, @tag)
       right_file = bottle_file_for(right, @tag)
-      left_entries = @archive_fetcher.call(left_file.fetch("url"))
-      right_entries = @archive_fetcher.call(right_file.fetch("url"))
+      left_entries = archive_entries_for(left)
+      right_entries = archive_entries_for(right)
 
       only_left = left_entries - right_entries
       only_right = right_entries - left_entries
@@ -152,6 +151,30 @@ module BrewDevTools
       @stdout.puts("  right url: #{right_file.fetch('url')}")
     end
 
+    def archive_entries_for(formula)
+      cache_path = cache_path_for(formula)
+      @archive_fetcher.call(cache_path)
+    end
+
+    def cache_path_for(formula)
+      formula_name = formula.fetch("full_name")
+      cache_path = @shell.run!(
+        @brew_executable,
+        "--cache",
+        "--bottle-tag=#{@tag}",
+        formula_name,
+      ).stdout.strip
+      return cache_path if File.exist?(cache_path)
+
+      @shell.run!(
+        @brew_executable,
+        "fetch",
+        "--bottle-tag=#{@tag}",
+        formula_name,
+      )
+      cache_path
+    end
+
     def bottle_file_for(formula, tag)
       bottle = stable_bottle(formula)
       raise ValidationError, "No stable bottle metadata found for `#{formula.fetch('full_name')}`." if bottle.nil?
@@ -164,16 +187,16 @@ module BrewDevTools
             "Bottle tag `#{tag}` not found for `#{formula.fetch('full_name')}`. Available tags: #{list_or_none(available)}"
     end
 
-    def fetch_archive_entries(url)
-      URI.open(url, "rb") do |io|
+    def read_archive_entries(path)
+      File.open(path, "rb") do |io|
         Zlib::GzipReader.wrap(io) do |gzip|
           Gem::Package::TarReader.new(gzip) do |tar|
             return tar.map(&:full_name).sort
           end
         end
       end
-    rescue OpenURI::HTTPError, Zlib::GzipFile::Error, Gem::Package::TarInvalidError => e
-      raise CommandError, "Could not inspect bottle contents from #{url}: #{e.message}"
+    rescue Errno::ENOENT, Zlib::GzipFile::Error, Gem::Package::TarInvalidError => e
+      raise CommandError, "Could not inspect bottle contents from #{path}: #{e.message}"
     end
 
     def stable_bottle(formula)
