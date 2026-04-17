@@ -53,8 +53,8 @@ class BottlesTest < BrewDevToolsTestCase
     archive_fetcher = lambda do |path|
       assert_equal "/tmp/foo-arm64_sequoia.tar.gz", path
       [
-        "foo/1.2.3/.brew/foo.rb",
-        "foo/1.2.3/bin/foo",
+        manifest_entry("foo/1.2.3/.brew/foo.rb", digest: "a" * 64, size: 120),
+        manifest_entry("foo/1.2.3/bin/foo", digest: "b" * 64, size: 42),
       ]
     end
 
@@ -146,7 +146,116 @@ class BottlesTest < BrewDevToolsTestCase
     assert_includes output, "arm64_sequoia: sha256 aaaaaaaaaaaa <> cccccccccccc; url differs"
   end
 
-  def test_compares_bottle_archive_contents
+  def test_compares_same_formula_tags_for_all_bottle_candidate
+    stdout = StringIO.new
+    shell = CaptureShell.new(
+      payload: { "formulae" => [formula_payload("foo")] },
+      cache_paths: {
+        ["foo", "arm64_sequoia"] => "/tmp/foo-arm64_sequoia.tar.gz",
+        ["foo", "sonoma"] => "/tmp/foo-sonoma.tar.gz",
+      },
+    )
+    archive_fetcher = lambda do |path|
+      case path
+      when "/tmp/foo-arm64_sequoia.tar.gz", "/tmp/foo-sonoma.tar.gz"
+        [
+          manifest_entry("foo/1.2.3/.brew/foo.rb", digest: "a" * 64, size: 120),
+          manifest_entry("foo/1.2.3/bin/foo", digest: "b" * 64, size: 42),
+        ]
+      else
+        flunk "unexpected bottle cache path #{path}"
+      end
+    end
+
+    BrewDevTools::Bottles.new(
+      shell: shell,
+      stdout: stdout,
+      archive_fetcher: archive_fetcher,
+      options: {
+        formulas: ["foo"],
+        compare: true,
+        contents: true,
+        tag: "arm64_sequoia",
+        against_tag: "sonoma",
+      },
+    ).run
+
+    output = stdout.string
+    assert_includes output, "Compare contents: foo arm64_sequoia <> foo sonoma"
+    assert_includes output, "archive entries match: true"
+    assert_includes output, "all bottle candidate: yes"
+    assert_includes output, "only in arm64_sequoia: (none)"
+    assert_includes output, "only in sonoma: (none)"
+    assert_includes output, "changed entries: (none)"
+  end
+
+  def test_compares_same_formula_tags_and_shows_changed_entries
+    stdout = StringIO.new
+    shell = CaptureShell.new(
+      payload: { "formulae" => [formula_payload("foo")] },
+      cache_paths: {
+        ["foo", "arm64_sequoia"] => "/tmp/foo-arm64_sequoia.tar.gz",
+        ["foo", "sonoma"] => "/tmp/foo-sonoma.tar.gz",
+      },
+    )
+    archive_fetcher = lambda do |path|
+      case path
+      when "/tmp/foo-arm64_sequoia.tar.gz"
+        [
+          manifest_entry("foo/1.2.3/.brew/foo.rb", digest: "a" * 64, size: 120),
+          manifest_entry("foo/1.2.3/bin/foo", digest: "b" * 64, size: 42),
+        ]
+      when "/tmp/foo-sonoma.tar.gz"
+        [
+          manifest_entry("foo/1.2.3/.brew/foo.rb", digest: "a" * 64, size: 120),
+          manifest_entry("foo/1.2.3/bin/foo", digest: "c" * 64, size: 42),
+        ]
+      else
+        flunk "unexpected bottle cache path #{path}"
+      end
+    end
+
+    BrewDevTools::Bottles.new(
+      shell: shell,
+      stdout: stdout,
+      archive_fetcher: archive_fetcher,
+      options: {
+        formulas: ["foo"],
+        compare: true,
+        contents: true,
+        tag: "arm64_sequoia",
+        against_tag: "sonoma",
+      },
+    ).run
+
+    output = stdout.string
+    assert_includes output, "all bottle candidate: no"
+    assert_includes output, "changed entries:"
+    assert_includes output, "foo/1.2.3/bin/foo: digest bbbbbbbbbbbb <> cccccccccccc"
+  end
+
+  def test_compare_same_formula_metadata_for_two_tags
+    stdout = StringIO.new
+    shell = CaptureShell.new(payload: { "formulae" => [formula_payload("foo")] })
+
+    BrewDevTools::Bottles.new(
+      shell: shell,
+      stdout: stdout,
+      options: {
+        formulas: ["foo"],
+        compare: true,
+        tag: "arm64_sequoia",
+        against_tag: "sonoma",
+      },
+    ).run
+
+    output = stdout.string
+    assert_includes output, "Compare tags: foo 1.2.3"
+    assert_includes output, "arm64_sequoia <> sonoma"
+    assert_includes output, "urls differ: true"
+  end
+
+  def test_compares_two_formula_bottle_archive_contents
     stdout = StringIO.new
     shell = CaptureShell.new(
       payload: { "formulae" => [formula_payload("foo"), formula_payload("bar")] },
@@ -159,18 +268,18 @@ class BottlesTest < BrewDevToolsTestCase
       case path
       when "/tmp/foo-arm64_sequoia.tar.gz"
         [
-          "foo/1.2.3/.brew/foo.rb",
-          "foo/1.2.3/bin/foo",
-          "foo/1.2.3/share/man/man1/foo.1",
+          manifest_entry("foo/1.2.3/.brew/foo.rb", digest: "a" * 64, size: 120),
+          manifest_entry("foo/1.2.3/bin/foo", digest: "b" * 64, size: 42),
+          manifest_entry("foo/1.2.3/share/man/man1/foo.1", digest: "d" * 64, size: 12),
         ]
       when "/tmp/bar-arm64_sequoia.tar.gz"
         [
-          "foo/1.2.3/.brew/foo.rb",
-          "foo/1.2.3/bin/foo",
-          "foo/1.2.3/lib/libbar.dylib",
+          manifest_entry("foo/1.2.3/.brew/foo.rb", digest: "a" * 64, size: 120),
+          manifest_entry("foo/1.2.3/bin/foo", digest: "b" * 64, size: 42),
+          manifest_entry("foo/1.2.3/lib/libbar.dylib", digest: "e" * 64, size: 16),
         ]
       else
-        flunk "unexpected bottle url #{url}"
+        flunk "unexpected bottle cache path #{path}"
       end
     end
 
@@ -188,7 +297,7 @@ class BottlesTest < BrewDevToolsTestCase
     assert_includes output, "only in bar: foo/1.2.3/lib/libbar.dylib"
   end
 
-  def test_compare_requires_exactly_two_formulae
+  def test_compare_requires_two_formulae_or_two_tags
     error = assert_raises(BrewDevTools::ValidationError) do
       BrewDevTools::Bottles.new(
         shell: CaptureShell.new(payload: { "formulae" => [] }),
@@ -197,7 +306,7 @@ class BottlesTest < BrewDevToolsTestCase
       ).run
     end
 
-    assert_equal "--compare expects exactly two formula names.", error.message
+    assert_equal "--compare expects either two formula names or one formula with --tag and --against-tag.", error.message
   end
 
   def test_contents_requires_tag
@@ -213,6 +322,16 @@ class BottlesTest < BrewDevToolsTestCase
   end
 
   private
+
+  def manifest_entry(name, digest: nil, size: 0, type: "0", linkname: "")
+    BrewDevTools::Bottles::ManifestEntry.new(
+      name: name,
+      type: type,
+      digest: digest,
+      size: size,
+      linkname: linkname,
+    )
+  end
 
   def formula_payload(name, rebuild: 0, revision: 0, root_url: "https://ghcr.io/v2/homebrew/core", files: nil)
     files ||= {

@@ -133,6 +133,8 @@ Use it to:
   URL for one or more formulae
 - inspect the file list inside a selected bottle archive with `--contents`
 - compare either bottle metadata or the archive contents for two formulae
+- compare two tags of the same formula to judge whether it is a plausible
+  `:all` bottle candidate
 - optionally include the full bottle blob URLs
 
 Examples:
@@ -143,6 +145,8 @@ brew bottles --urls zstd
 brew bottles --contents --tag arm64_sequoia zstd
 brew bottles --compare zstd xz
 brew bottles --compare --contents --tag arm64_sequoia zstd xz
+brew bottles --compare --tag arm64_tahoe --against-tag sonoma envio
+brew bottles --compare --contents --tag arm64_tahoe --against-tag sonoma envio
 ```
 
 ## Install
@@ -160,6 +164,7 @@ brew tap your-user/dev-tools /absolute/path/to/this/repo
 ```sh
 brew prsync --help
 brew wwdd --help
+brew bottles --help
 ```
 
 If you want GitHub automation from `brew prsync --pr`, make sure `gh auth status`

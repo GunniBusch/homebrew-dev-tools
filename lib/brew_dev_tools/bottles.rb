@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
+require "digest"
 require "rubygems/package"
 require "zlib"
 
 module BrewDevTools
   class Bottles
+    ManifestEntry = Struct.new(:name, :type, :digest, :size, :linkname, keyword_init: true)
+
     def initialize(shell: Shell.new, stdout: $stdout, archive_fetcher: nil, options: {})
       @shell = shell
       @stdout = stdout
@@ -13,14 +16,16 @@ module BrewDevTools
       @show_contents = options.fetch(:contents, false)
       @show_urls = options.fetch(:show_urls, false)
       @tag = options[:tag]
+      @against_tag = options[:against_tag]
       @brew_executable = options.fetch(:brew_executable, "brew")
-      @archive_fetcher = archive_fetcher || method(:read_archive_entries)
+      @archive_fetcher = archive_fetcher || method(:read_archive_manifest)
     end
 
     def run
       validate_options!
       formulae = fetch_formulae(@formulas)
 
+      return print_compare_same_formula(formulae.fetch(0)) if same_formula_compare?
       return print_compare(formulae.fetch(0), formulae.fetch(1)) if @compare
 
       formulae.each_with_index do |formula, index|
@@ -33,10 +38,19 @@ module BrewDevTools
 
     def validate_options!
       raise ValidationError, "Pass at least one formula name." if @formulas.empty?
-      raise ValidationError, "--compare expects exactly two formula names." if @compare && @formulas.length != 2
-      return unless @show_contents && @tag.to_s.empty?
+      raise ValidationError, "--contents requires --tag so a specific bottle can be inspected." if @show_contents && @tag.to_s.empty?
+      return unless @compare
 
-      raise ValidationError, "--contents requires --tag so a specific bottle can be inspected."
+      if same_formula_compare?
+        return
+      end
+
+      valid_cross_formula = @formulas.length == 2
+      raise ValidationError, "--compare expects either two formula names or one formula with --tag and --against-tag." unless valid_cross_formula
+    end
+
+    def same_formula_compare?
+      @compare && @formulas.length == 1 && !@tag.to_s.empty? && !@against_tag.to_s.empty?
     end
 
     def fetch_formulae(names)
@@ -73,7 +87,7 @@ module BrewDevTools
     end
 
     def print_compare(left, right)
-      return print_compare_contents(left, right) if @show_contents
+      return print_compare_contents(left, right, @tag, @tag) if @show_contents
 
       left_bottle = stable_bottle(left)
       right_bottle = stable_bottle(right)
@@ -119,49 +133,97 @@ module BrewDevTools
       end
     end
 
+    def print_compare_same_formula(formula)
+      return print_compare_contents(formula, formula, @tag, @against_tag) if @show_contents
+
+      left_file = bottle_file_for(formula, @tag)
+      right_file = bottle_file_for(formula, @against_tag)
+
+      @stdout.puts("Compare tags: #{formula.fetch('full_name')} #{formula_pkg_version(formula)}")
+      @stdout.puts("  #{@tag} <> #{@against_tag}")
+      @stdout.puts("  cellar: #{left_file.fetch('cellar')} <> #{right_file.fetch('cellar')}")
+      @stdout.puts("  sha256: #{short_sha(left_file.fetch('sha256'))} <> #{short_sha(right_file.fetch('sha256'))}")
+      @stdout.puts("  urls differ: #{left_file.fetch('url') != right_file.fetch('url')}")
+    end
+
     def print_formula_contents(formula)
       file = bottle_file_for(formula, @tag)
-      entries = archive_entries_for(formula)
+      manifest = archive_manifest_for(formula, @tag)
 
       @stdout.puts("#{formula.fetch('full_name')} #{formula_pkg_version(formula)}")
       @stdout.puts("  tag: #{@tag}")
       @stdout.puts("  sha256: #{short_sha(file.fetch('sha256'))}")
-      @stdout.puts("  entries: #{entries.length}")
+      @stdout.puts("  entries: #{manifest.length}")
       @stdout.puts("  url: #{file.fetch('url')}") if @show_urls
-      entries.each { |entry| @stdout.puts("    #{entry}") }
+      manifest.each { |entry| @stdout.puts("    #{entry.name}") }
     end
 
-    def print_compare_contents(left, right)
-      left_file = bottle_file_for(left, @tag)
-      right_file = bottle_file_for(right, @tag)
-      left_entries = archive_entries_for(left)
-      right_entries = archive_entries_for(right)
+    def print_compare_contents(left_formula, right_formula, left_tag, right_tag)
+      left_file = bottle_file_for(left_formula, left_tag)
+      right_file = bottle_file_for(right_formula, right_tag)
+      left_manifest = archive_manifest_for(left_formula, left_tag)
+      right_manifest = archive_manifest_for(right_formula, right_tag)
 
-      only_left = left_entries - right_entries
-      only_right = right_entries - left_entries
-      common = left_entries & right_entries
+      left_index = left_manifest.to_h { |entry| [entry.name, entry] }
+      right_index = right_manifest.to_h { |entry| [entry.name, entry] }
+      left_names = left_index.keys.sort
+      right_names = right_index.keys.sort
+      common_names = left_names & right_names
 
-      @stdout.puts("Compare contents: #{left.fetch('full_name')} #{@tag} <> #{right.fetch('full_name')} #{@tag}")
-      @stdout.puts("  common entries: #{common.length}")
-      @stdout.puts("  only in #{left.fetch('name')}: #{list_or_none(only_left)}")
-      @stdout.puts("  only in #{right.fetch('name')}: #{list_or_none(only_right)}")
+      only_left = left_names - right_names
+      only_right = right_names - left_names
+      changed = common_names.filter_map do |name|
+        left_entry = left_index.fetch(name)
+        right_entry = right_index.fetch(name)
+        differences = []
+        differences << "type #{left_entry.type} <> #{right_entry.type}" if left_entry.type != right_entry.type
+        differences << "size #{left_entry.size} <> #{right_entry.size}" if left_entry.size != right_entry.size
+        differences << "digest #{short_sha_or_nil(left_entry.digest)} <> #{short_sha_or_nil(right_entry.digest)}" if left_entry.digest != right_entry.digest
+        differences << "link #{left_entry.linkname} <> #{right_entry.linkname}" if left_entry.linkname != right_entry.linkname
+        next if differences.empty?
+
+        [name, differences]
+      end
+
+      @stdout.puts("Compare contents: #{left_formula.fetch('full_name')} #{left_tag} <> #{right_formula.fetch('full_name')} #{right_tag}")
+      @stdout.puts("  archive entries match: #{changed.empty? && only_left.empty? && only_right.empty?}")
+      if left_formula.fetch("full_name") == right_formula.fetch("full_name")
+        @stdout.puts("  all bottle candidate: #{changed.empty? && only_left.empty? && only_right.empty? ? 'yes' : 'no'}")
+      end
+      @stdout.puts("  common entries: #{common_names.length}")
+      @stdout.puts("  only in #{tag_label(left_formula, left_tag, right_formula)}: #{list_or_none(only_left)}")
+      @stdout.puts("  only in #{tag_label(right_formula, right_tag, left_formula)}: #{list_or_none(only_right)}")
+
+      if changed.empty?
+        @stdout.puts("  changed entries: (none)")
+      else
+        @stdout.puts("  changed entries:")
+        changed.each do |name, differences|
+          @stdout.puts("    #{name}: #{differences.join('; ')}")
+        end
+      end
+
       return unless @show_urls
 
       @stdout.puts("  left url: #{left_file.fetch('url')}")
       @stdout.puts("  right url: #{right_file.fetch('url')}")
     end
 
-    def archive_entries_for(formula)
-      cache_path = cache_path_for(formula)
+    def tag_label(formula, tag, other_formula)
+      formula.fetch("full_name") == other_formula.fetch("full_name") ? tag : formula.fetch("name")
+    end
+
+    def archive_manifest_for(formula, tag)
+      cache_path = cache_path_for(formula, tag)
       @archive_fetcher.call(cache_path)
     end
 
-    def cache_path_for(formula)
+    def cache_path_for(formula, tag)
       formula_name = formula.fetch("full_name")
       cache_path = @shell.run!(
         @brew_executable,
         "--cache",
-        "--bottle-tag=#{@tag}",
+        "--bottle-tag=#{tag}",
         formula_name,
       ).stdout.strip
       return cache_path if File.exist?(cache_path)
@@ -169,7 +231,7 @@ module BrewDevTools
       @shell.run!(
         @brew_executable,
         "fetch",
-        "--bottle-tag=#{@tag}",
+        "--bottle-tag=#{tag}",
         formula_name,
       )
       cache_path
@@ -187,16 +249,32 @@ module BrewDevTools
             "Bottle tag `#{tag}` not found for `#{formula.fetch('full_name')}`. Available tags: #{list_or_none(available)}"
     end
 
-    def read_archive_entries(path)
+    def read_archive_manifest(path)
       File.open(path, "rb") do |io|
         Zlib::GzipReader.wrap(io) do |gzip|
           Gem::Package::TarReader.new(gzip) do |tar|
-            return tar.map(&:full_name).sort
+            return tar.map { |entry| manifest_entry_for(entry) }.sort_by(&:name)
           end
         end
       end
     rescue Errno::ENOENT, Zlib::GzipFile::Error, Gem::Package::TarInvalidError => e
       raise CommandError, "Could not inspect bottle contents from #{path}: #{e.message}"
+    end
+
+    def manifest_entry_for(entry)
+      ManifestEntry.new(
+        name: entry.full_name,
+        type: entry.header.typeflag,
+        digest: digest_for(entry),
+        size: entry.header.size,
+        linkname: entry.header.linkname,
+      )
+    end
+
+    def digest_for(entry)
+      return nil unless entry.file?
+
+      Digest::SHA256.hexdigest(entry.read)
     end
 
     def stable_bottle(formula)
@@ -213,6 +291,10 @@ module BrewDevTools
 
     def short_sha(sha)
       sha[0, 12]
+    end
+
+    def short_sha_or_nil(sha)
+      sha.nil? ? "(none)" : short_sha(sha)
     end
 
     def list_or_none(values)
