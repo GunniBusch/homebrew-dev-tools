@@ -166,11 +166,23 @@ class BottlesTest < BrewDevToolsTestCase
         flunk "unexpected bottle cache path #{path}"
       end
     end
+    diffoscope_runner = lambda do |_left_path, _right_path, formula_name, left_tag, right_tag|
+      assert_equal "foo", formula_name
+      assert_equal "arm64_sequoia", left_tag
+      assert_equal "sonoma", right_tag
+
+      {
+        summary: "no differences",
+        path: "/tmp/foo-diffoscope.txt",
+        excerpt: "",
+      }
+    end
 
     BrewDevTools::Bottles.new(
       shell: shell,
       stdout: stdout,
       archive_fetcher: archive_fetcher,
+      diffoscope_runner: diffoscope_runner,
       options: {
         formulas: ["foo"],
         compare: true,
@@ -187,6 +199,8 @@ class BottlesTest < BrewDevToolsTestCase
     assert_includes output, "only in arm64_sequoia: (none)"
     assert_includes output, "only in sonoma: (none)"
     assert_includes output, "changed entries: (none)"
+    assert_includes output, "diffoscope: no differences"
+    assert_includes output, "diffoscope report: /tmp/foo-diffoscope.txt"
   end
 
   def test_compares_same_formula_tags_and_shows_changed_entries
@@ -214,11 +228,19 @@ class BottlesTest < BrewDevToolsTestCase
         flunk "unexpected bottle cache path #{path}"
       end
     end
+    diffoscope_runner = lambda do |_left_path, _right_path, _formula_name, _left_tag, _right_tag|
+      {
+        summary: "differences detected",
+        path: "/tmp/foo-diffoscope.txt",
+        excerpt: "--- /tmp/foo-arm64_sequoia.tar.gz\n+++ /tmp/foo-sonoma.tar.gz\n@@ binary @@\n",
+      }
+    end
 
     BrewDevTools::Bottles.new(
       shell: shell,
       stdout: stdout,
       archive_fetcher: archive_fetcher,
+      diffoscope_runner: diffoscope_runner,
       options: {
         formulas: ["foo"],
         compare: true,
@@ -232,6 +254,9 @@ class BottlesTest < BrewDevToolsTestCase
     assert_includes output, "all bottle candidate: no"
     assert_includes output, "changed entries:"
     assert_includes output, "foo/1.2.3/bin/foo: digest bbbbbbbbbbbb <> cccccccccccc"
+    assert_includes output, "diffoscope: differences detected"
+    assert_includes output, "diffoscope excerpt:"
+    assert_includes output, "--- /tmp/foo-arm64_sequoia.tar.gz"
   end
 
   def test_compare_same_formula_metadata_for_two_tags
