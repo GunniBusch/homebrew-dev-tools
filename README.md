@@ -135,6 +135,8 @@ Use it to:
 - compare either bottle metadata or the archive contents for two formulae
 - compare two tags of the same formula to judge whether it is a plausible
   `:all` bottle candidate
+- include a `diffoscope` report when comparing two tags of the same formula with
+  `--contents`
 - optionally include the full bottle blob URLs
 
 Examples:

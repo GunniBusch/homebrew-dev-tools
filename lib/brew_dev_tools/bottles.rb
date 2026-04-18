@@ -2,13 +2,14 @@
 
 require "digest"
 require "rubygems/package"
+require "tmpdir"
 require "zlib"
 
 module BrewDevTools
   class Bottles
     ManifestEntry = Struct.new(:name, :type, :digest, :size, :linkname, keyword_init: true)
 
-    def initialize(shell: Shell.new, stdout: $stdout, archive_fetcher: nil, options: {})
+    def initialize(shell: Shell.new, stdout: $stdout, archive_fetcher: nil, diffoscope_runner: nil, options: {})
       @shell = shell
       @stdout = stdout
       @formulas = options.fetch(:formulas, [])
@@ -18,7 +19,9 @@ module BrewDevTools
       @tag = options[:tag]
       @against_tag = options[:against_tag]
       @brew_executable = options.fetch(:brew_executable, "brew")
+      @diffoscope_executable = options.fetch(:diffoscope_executable, "diffoscope")
       @archive_fetcher = archive_fetcher || method(:read_archive_manifest)
+      @diffoscope_runner = diffoscope_runner || method(:run_diffoscope)
     end
 
     def run
@@ -203,6 +206,8 @@ module BrewDevTools
         end
       end
 
+      print_diffoscope(left_formula, left_tag, right_tag) if left_formula.fetch("full_name") == right_formula.fetch("full_name")
+
       return unless @show_urls
 
       @stdout.puts("  left url: #{left_file.fetch('url')}")
@@ -216,6 +221,22 @@ module BrewDevTools
     def archive_manifest_for(formula, tag)
       cache_path = cache_path_for(formula, tag)
       @archive_fetcher.call(cache_path)
+    end
+
+    def print_diffoscope(formula, left_tag, right_tag)
+      left_path = cache_path_for(formula, left_tag)
+      right_path = cache_path_for(formula, right_tag)
+      report = @diffoscope_runner.call(left_path, right_path, formula.fetch("name"), left_tag, right_tag)
+      return if report.nil?
+
+      @stdout.puts("  diffoscope: #{report.fetch(:summary)}")
+      @stdout.puts("  diffoscope report: #{report.fetch(:path)}") if report[:path]
+      return if report[:excerpt].to_s.empty?
+
+      @stdout.puts("  diffoscope excerpt:")
+      report.fetch(:excerpt).lines.each do |line|
+        @stdout.puts("    #{line.rstrip}")
+      end
     end
 
     def cache_path_for(formula, tag)
@@ -235,6 +256,36 @@ module BrewDevTools
         formula_name,
       )
       cache_path
+    end
+
+    def run_diffoscope(left_path, right_path, formula_name, left_tag, right_tag)
+      report_path = File.join(
+        Dir.tmpdir,
+        "brew-bottles-diffoscope-#{formula_name}-#{left_tag}-#{right_tag}.txt",
+      )
+      result = @shell.run!(
+        @diffoscope_executable,
+        "--text",
+        report_path,
+        left_path,
+        right_path,
+        allow_failure: true,
+      )
+      report_body = File.exist?(report_path) ? File.read(report_path) : ""
+      summary =
+        case result.status
+        when 0 then "no differences"
+        when 1 then "differences detected"
+        else "failed with exit #{result.status}"
+        end
+
+      {
+        summary:,
+        path: File.exist?(report_path) ? report_path : nil,
+        excerpt: report_body.lines.first(40).join,
+      }
+    rescue Errno::ENOENT
+      { summary: "unavailable", path: nil, excerpt: "" }
     end
 
     def bottle_file_for(formula, tag)
