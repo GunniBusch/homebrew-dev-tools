@@ -21,7 +21,7 @@ module Homebrew
         flag "--style=",
              description: "Commit/PR title style: auto, homebrew (`foo 1.2.3`), or conventional (`chore(foo): update to 1.2.3`)."
         flag "--base=",
-             description: "Override the base branch ref used to compute the merge-base."
+             description: "Override the base branch ref used to compute the merge-base. By default prsync prefers the upstream/non-fork remote."
         named_args :formula
       end
 
