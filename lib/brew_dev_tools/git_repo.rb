@@ -64,6 +64,17 @@ module BrewDevTools
       remote.empty? ? "origin" : remote
     end
 
+    def default_base_remote
+      branch_remote = upstream_remote
+      remotes = git_remotes
+      parent_remote = github_parent_remote_for(branch_remote, remotes)
+      return parent_remote if parent_remote
+      return "upstream" if remotes.include?("upstream") && branch_remote != "upstream"
+      return "origin" if remotes.include?("origin") && branch_remote != "origin"
+
+      branch_remote
+    end
+
     def remote_url(remote)
       run_git!("remote", "get-url", remote).stdout.strip
     rescue CommandError
@@ -76,10 +87,10 @@ module BrewDevTools
     end
 
     def default_base_ref
-      symbolic = run_git!("symbolic-ref", "refs/remotes/#{upstream_remote}/HEAD", allow_failure: true).stdout.strip
+      symbolic = run_git!("symbolic-ref", "refs/remotes/#{default_base_remote}/HEAD", allow_failure: true).stdout.strip
       return symbolic.sub(%r{\Arefs/remotes/}, "") unless symbolic.empty?
 
-      %W[#{upstream_remote}/master #{upstream_remote}/main master main].find do |candidate|
+      %W[#{default_base_remote}/master #{default_base_remote}/main master main].find do |candidate|
         run_git!("rev-parse", "--verify", candidate, allow_failure: true).success?
       end || raise(GitError, "Could not determine a base branch for #{current_branch}")
     end
@@ -233,6 +244,39 @@ module BrewDevTools
       ]
       match = patterns.lazy.map { |pattern| url.match(pattern) }.find(&:itself)
       match && match[1]
+    end
+
+    def git_remotes
+      run_git!("remote").stdout.lines.map(&:strip)
+    end
+
+    def github_parent_remote_for(remote_name, remotes = git_remotes)
+      remote_repo = github_repo_name_for_remote(remote_name)
+      return nil if remote_repo.nil?
+
+      result = @shell.run!(
+        "gh", "repo", "view", remote_repo, "--json", "parent", "--jq", ".parent.nameWithOwner // \"\"",
+        chdir: path,
+        allow_failure: true,
+      )
+      parent_repo = result.stdout.strip
+      return nil if parent_repo.empty?
+
+      remotes.find { |candidate| github_repo_name_for_remote(candidate) == parent_repo }
+    rescue CommandError
+      nil
+    end
+
+    def github_repo_name_for_remote(remote_name)
+      url = run_git!("remote", "get-url", remote_name, allow_failure: true).stdout.strip
+      return nil if url.empty?
+
+      github_repo_name_from_url(url)
+    end
+
+    def github_repo_name_from_url(url)
+      match = url.match(%r{\A(?:https://github\.com/|git@github\.com:)([^/]+/[^/.]+)(?:\.git)?\z})
+      match&.captures&.first
     end
 
     def resolve_requested_paths(all_formula_paths, formulas)

@@ -73,4 +73,46 @@ class GitRepoTest < BrewDevToolsTestCase
       assert_equal "GunniBusch", repo.head_owner_for_branch("feature")
     end
   end
+
+  def test_default_base_ref_prefers_origin_over_branch_fork_remote
+    with_tmpdir do |dir|
+      init_repo(dir)
+      upstream = init_bare_remote(dir/"upstream")
+      fork = init_bare_remote(dir/"fork")
+      attach_origin(dir, upstream)
+      run_cmd(dir, "git", "remote", "add", "gunnibusch", fork.to_s)
+      commit_formula(dir, "foo", formula_content("foo", "1.0.0"), "foo 1.0.0 (new formula)")
+      run_cmd(dir, "git", "push", "-u", "origin", "master")
+      run_cmd(dir, "git", "push", "-u", "gunnibusch", "master")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+      run_cmd(dir, "git", "config", "branch.feature.remote", "gunnibusch")
+      run_cmd(dir, "git", "config", "branch.feature.merge", "refs/heads/master")
+
+      repo = BrewDevTools::GitRepo.new(path: dir)
+
+      assert_equal "gunnibusch", repo.upstream_remote
+      assert_equal "origin", repo.default_base_remote
+      assert_equal "origin/master", repo.default_base_ref
+    end
+  end
+
+  def test_default_base_ref_prefers_upstream_remote_when_present
+    with_tmpdir do |dir|
+      init_repo(dir)
+      upstream = init_bare_remote(dir/"upstream")
+      fork = init_bare_remote(dir/"fork")
+      attach_origin(dir, fork)
+      run_cmd(dir, "git", "remote", "add", "upstream", upstream.to_s)
+      commit_formula(dir, "foo", formula_content("foo", "1.0.0"), "foo 1.0.0 (new formula)")
+      run_cmd(dir, "git", "push", "-u", "origin", "master")
+      run_cmd(dir, "git", "push", "-u", "upstream", "master")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+
+      repo = BrewDevTools::GitRepo.new(path: dir)
+
+      assert_equal "origin", repo.upstream_remote
+      assert_equal "upstream", repo.default_base_remote
+      assert_equal "upstream/master", repo.default_base_ref
+    end
+  end
 end

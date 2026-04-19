@@ -46,6 +46,8 @@ Highlights:
   `OWNER:branch` when the branch tracks a GitHub fork remote.
 - `--pr` is branch-based: if GitHub already has an open PR for the current
   branch, `prsync` updates it; otherwise it creates a new PR for that branch.
+- In fork workflows, computes the merge-base against the upstream/non-fork
+  remote by default. `--base` is only needed when you want to opt out of that.
 
 Example:
 
