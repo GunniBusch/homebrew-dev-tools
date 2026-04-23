@@ -13,7 +13,7 @@ and pull request titles. Treat that as mandatory project policy.
 - `prsync` still generates Homebrew-native titles when you run it inside
   `homebrew/core`, because that repository has a different upstream policy
 
-The repo ships two external commands:
+The repo ships three external commands:
 
 - `brew prsync`: normalize commit history, generate commit/PR titles, push, and
   optionally create or update a PR
@@ -170,6 +170,19 @@ brew prsync --help
 brew wwdd --help
 brew bottles --help
 ```
+
+4. Link shell completions:
+
+```sh
+brew completions link
+```
+
+Homebrew does not link external tap completions by default. The tap ships
+completion files under `completions/bash`, `completions/zsh`, and
+`completions/fish`, which `brew completions link` links into Homebrew's normal
+completion directories. Your shell still needs Homebrew completion support
+enabled first; see Homebrew's shell completion documentation for the shell
+startup configuration.
 
 If you want GitHub automation from `brew prsync --pr`, make sure `gh auth status`
 works in the target checkout.

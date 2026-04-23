@@ -1,0 +1,163 @@
+# Bash completion for brew-dev-tools external Homebrew commands.
+
+__brew_dev_tools_formulae() {
+  HOMEBREW_NO_AUTO_UPDATE=1 brew formulae 2>/dev/null
+}
+
+__brew_dev_tools_git_refs() {
+  git for-each-ref --format="%(refname:short)" refs/heads refs/remotes 2>/dev/null
+}
+
+__brew_dev_tools_bottle_tags() {
+  printf "%s\n" \
+    all \
+    arm64_tahoe tahoe \
+    arm64_sequoia sequoia \
+    arm64_sonoma sonoma \
+    arm64_ventura ventura \
+    arm64_linux x86_64_linux
+}
+
+__brew_dev_tools_complete_words() {
+  local words="${1}"
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+
+  while read -r line
+  do
+    COMPREPLY+=("${line}")
+  done < <(compgen -W "${words}" -- "${cur}")
+}
+
+__brew_dev_tools_complete_values() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+  case "${prev}" in
+    --style)
+      __brew_dev_tools_complete_words "auto homebrew conventional"
+      return 0
+      ;;
+    --base)
+      while read -r line
+      do
+        COMPREPLY+=("${line}")
+      done < <(compgen -W "$(__brew_dev_tools_git_refs)" -- "${cur}")
+      return 0
+      ;;
+    --tag|--against-tag)
+      while read -r line
+      do
+        COMPREPLY+=("${line}")
+      done < <(compgen -W "$(__brew_dev_tools_bottle_tags)" -- "${cur}")
+      return 0
+      ;;
+  esac
+
+  case "${cur}" in
+    --style=*)
+      local value="${cur#--style=}"
+      while read -r line
+      do
+        COMPREPLY+=("--style=${line}")
+      done < <(compgen -W "auto homebrew conventional" -- "${value}")
+      return 0
+      ;;
+    --base=*)
+      local value="${cur#--base=}"
+      while read -r line
+      do
+        COMPREPLY+=("--base=${line}")
+      done < <(compgen -W "$(__brew_dev_tools_git_refs)" -- "${value}")
+      return 0
+      ;;
+    --tag=*)
+      local value="${cur#--tag=}"
+      while read -r line
+      do
+        COMPREPLY+=("--tag=${line}")
+      done < <(compgen -W "$(__brew_dev_tools_bottle_tags)" -- "${value}")
+      return 0
+      ;;
+    --against-tag=*)
+      local value="${cur#--against-tag=}"
+      while read -r line
+      do
+        COMPREPLY+=("--against-tag=${line}")
+      done < <(compgen -W "$(__brew_dev_tools_bottle_tags)" -- "${value}")
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+__brew_dev_tools_complete_formula_or_option() {
+  local options="${1}"
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+
+  __brew_dev_tools_complete_values && return
+
+  if [[ "${cur}" == -* ]]
+  then
+    __brew_dev_tools_complete_words "${options}"
+    return
+  fi
+
+  while read -r line
+  do
+    COMPREPLY+=("${line}")
+  done < <(compgen -W "$(__brew_dev_tools_formulae)" -- "${cur}")
+}
+
+_brew_prsync() {
+  COMPREPLY=()
+  __brew_dev_tools_complete_formula_or_option "--apply --push --pr --message= --style= --base= --help"
+}
+
+_brew_wwdd() {
+  COMPREPLY=()
+  __brew_dev_tools_complete_formula_or_option "--online --install --base= --help"
+}
+
+_brew_bottles() {
+  COMPREPLY=()
+  __brew_dev_tools_complete_formula_or_option "--compare --contents --tag= --against-tag= --urls --help"
+}
+
+_brew_dev_tools_brew() {
+  local command_index=1
+  local command_name
+
+  while [[ "${command_index}" -lt "${COMP_CWORD}" ]]
+  do
+    case "${COMP_WORDS[command_index]}" in
+      --*|-*)
+        ;;
+      *)
+        command_name="${COMP_WORDS[command_index]}"
+        break
+        ;;
+    esac
+    (( command_index++ ))
+  done
+
+  case "${command_name}" in
+    prsync)
+      _brew_prsync
+      ;;
+    wwdd)
+      _brew_wwdd
+      ;;
+    bottles)
+      _brew_bottles
+      ;;
+    *)
+      if declare -F _brew >/dev/null
+      then
+        _brew
+      fi
+      ;;
+  esac
+}
+
+complete -o bashdefault -o default -F _brew_dev_tools_brew brew

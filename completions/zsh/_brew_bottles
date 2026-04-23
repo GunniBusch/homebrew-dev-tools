@@ -1,0 +1,22 @@
+#compdef brew
+
+# Zsh completion for `brew bottles`.
+
+__brew_dev_tools_formulae() {
+  local -a formulae
+  formulae=("${(@f)$(HOMEBREW_NO_AUTO_UPDATE=1 brew formulae 2>/dev/null)}")
+  _describe -t formulae "formula" formulae
+}
+
+_brew_bottles() {
+  _arguments \
+    "--compare[Compare two formulae, or compare two tags for one formula]" \
+    "--contents[Inspect the contents of a specific bottle archive]" \
+    "--tag=[Bottle tag to inspect or compare]:tag:(all arm64_tahoe tahoe arm64_sequoia sequoia arm64_sonoma sonoma arm64_ventura ventura arm64_linux x86_64_linux)" \
+    "--against-tag=[Second bottle tag to compare against for the same formula]:tag:(all arm64_tahoe tahoe arm64_sequoia sequoia arm64_sonoma sonoma arm64_ventura ventura arm64_linux x86_64_linux)" \
+    "--urls[Include full bottle URLs in the output]" \
+    "--help[Show help]" \
+    "*:formula:__brew_dev_tools_formulae"
+}
+
+_brew_bottles "$@"

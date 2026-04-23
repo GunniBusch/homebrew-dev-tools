@@ -1,0 +1,29 @@
+#compdef brew
+
+# Zsh completion for `brew prsync`.
+
+__brew_dev_tools_formulae() {
+  local -a formulae
+  formulae=("${(@f)$(HOMEBREW_NO_AUTO_UPDATE=1 brew formulae 2>/dev/null)}")
+  _describe -t formulae "formula" formulae
+}
+
+__brew_dev_tools_git_refs() {
+  local -a refs
+  refs=("${(@f)$(git for-each-ref --format="%(refname:short)" refs/heads refs/remotes 2>/dev/null)}")
+  _describe -t refs "base ref" refs
+}
+
+_brew_prsync() {
+  _arguments \
+    "--apply[Rewrite the current branch from its merge-base]" \
+    "--push[Push the rewritten branch with --force-with-lease]" \
+    "--pr[Create or update the GitHub pull request after rewriting]" \
+    "--message=[Override the generated commit subject for a single formula rewrite]:subject:" \
+    "--style=[Commit/PR title style]:style:(auto homebrew conventional)" \
+    "--base=[Override the base branch ref used to compute the merge-base]:base ref:__brew_dev_tools_git_refs" \
+    "--help[Show help]" \
+    "*:formula:__brew_dev_tools_formulae"
+}
+
+_brew_prsync "$@"

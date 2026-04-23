@@ -1,0 +1,26 @@
+#compdef brew
+
+# Zsh completion for `brew wwdd`.
+
+__brew_dev_tools_formulae() {
+  local -a formulae
+  formulae=("${(@f)$(HOMEBREW_NO_AUTO_UPDATE=1 brew formulae 2>/dev/null)}")
+  _describe -t formulae "formula" formulae
+}
+
+__brew_dev_tools_git_refs() {
+  local -a refs
+  refs=("${(@f)$(git for-each-ref --format="%(refname:short)" refs/heads refs/remotes 2>/dev/null)}")
+  _describe -t refs "base ref" refs
+}
+
+_brew_wwdd() {
+  _arguments \
+    "--online[Pass --online through to brew audit]" \
+    "--install[Include brew install --build-from-source]" \
+    "--base=[Override the base branch ref used to compute changed formulae]:base ref:__brew_dev_tools_git_refs" \
+    "--help[Show help]" \
+    "*:formula:__brew_dev_tools_formulae"
+}
+
+_brew_wwdd "$@"
