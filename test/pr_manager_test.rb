@@ -248,4 +248,69 @@ class PRManagerTest < BrewDevToolsTestCase
       assert_includes body, "I manually reviewed the generated changes"
     end
   end
+
+  def test_does_not_mark_homebrew_core_ai_checkbox_without_ai_plan
+    with_tmpdir do |dir|
+      repo = FakeRepo.new(
+        path: dir.to_s,
+        homebrew_core: true,
+        pull_request_template: <<~TEMPLATE,
+          -----
+          - [ ] Have you ensured that your commits follow the [commit style guide](https://docs.brew.sh/Formula-Cookbook#commit)?
+          - [ ] Is your test running fine `brew test <formula>`?
+          -----
+          - [ ] AI was used to generate or assist with generating this PR. *Please specify below how you used AI to help you, and what steps you have taken to manually verify the changes*.
+          -----
+        TEMPLATE
+      )
+      shell = CaptureShell.new
+      manager = BrewDevTools::PRManager.new(repo: repo, shell: shell, stdout: StringIO.new)
+      BrewDevTools::ValidationStore.save(
+        repo: repo,
+        report: {
+          "formulas" => [
+            {
+              "formula" => "foo",
+              "steps" => [
+                { "name" => "test", "success" => true },
+              ],
+            },
+          ],
+          "ai" => {
+            "detected" => true,
+            "tool" => "Codex",
+            "source" => "env",
+            "detail" => "Detected via CODEX_SHELL.",
+          },
+        },
+      )
+      plan = BrewDevTools::Prsync::Plan.new(
+        branch: "feature",
+        base_ref: "origin/main",
+        base_sha: "abc123",
+        head_sha: "def456",
+        upstream_remote: "origin",
+        backup_branch: "backup/feature",
+        message_style: :homebrew,
+        ai: false,
+        formulas: [
+          BrewDevTools::Prsync::FormulaPlan.new(
+            formula: "foo",
+            path: "Formula/foo.rb",
+            subject: "foo 1.2.3",
+            subject_kind: :version_bump,
+            generated_summary: false,
+            operations: ["create single commit"],
+          ),
+        ],
+      )
+
+      manager.sync_pr!(plan)
+
+      create = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "create"] }
+      body = create[create.index("--body") + 1]
+      refute_includes body, "- [x] AI was used to generate or assist with generating this PR."
+      refute_includes body, "AI/LLM usage: Codex."
+    end
+  end
 end
