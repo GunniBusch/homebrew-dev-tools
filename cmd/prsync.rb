@@ -17,7 +17,7 @@ module Homebrew
         switch "--pr",
                description: "Create or update the GitHub pull request after rewriting."
         switch "--ai",
-               description: "Mark the PR as AI-assisted and include AI disclosure text from the latest `brew wwdd` report."
+               description: "Force AI-assisted PR disclosure even if no detected `brew wwdd` AI report is present."
         flag "--message=",
              description: "Override the generated commit subject for a single formula rewrite."
         flag "--style=",
