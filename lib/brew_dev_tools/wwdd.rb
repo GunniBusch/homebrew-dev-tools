@@ -12,6 +12,7 @@ module BrewDevTools
       @brew_executable = options.fetch(:brew_executable, ENV.fetch("HOMEBREW_BREW_FILE", "brew"))
       @base_ref = options[:base_ref]
       @time_source = options[:time_source] || -> { Time.now.utc }
+      @ai_context = options[:ai_context] || AIContext.new
     end
 
     def run
@@ -20,6 +21,7 @@ module BrewDevTools
         "generated_at" => @time_source.call.iso8601,
         "branch" => change_set.branch,
         "head_sha" => change_set.head_sha,
+        "ai" => @ai_context.detect,
         "formulas" => [],
       }
 
@@ -74,6 +76,7 @@ module BrewDevTools
       all_success = report.fetch("formulas").all? do |formula_report|
         formula_report.fetch("steps").all? { |step| step.fetch("success") }
       end
+      ai = report.fetch("ai")
 
       @stdout.puts("Summary:")
       report.fetch("formulas").each do |formula_report|
@@ -81,6 +84,11 @@ module BrewDevTools
           "#{step.fetch('name')}: #{step.fetch('success') ? 'pass' : 'fail'}"
         end
         @stdout.puts("  #{formula_report.fetch('formula')}: #{statuses.join(', ')}")
+      end
+      if ai.fetch("detected")
+        @stdout.puts("  AI context: #{ai.fetch('tool')} (#{ai.fetch('source')})")
+      else
+        @stdout.puts("  AI context: not detected")
       end
       @stdout.puts(all_success ? "WWDD: ready" : "WWDD: failed")
     end

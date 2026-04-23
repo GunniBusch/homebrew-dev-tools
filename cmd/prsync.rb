@@ -16,6 +16,8 @@ module Homebrew
                description: "Push the rewritten branch with --force-with-lease."
         switch "--pr",
                description: "Create or update the GitHub pull request after rewriting."
+        switch "--ai",
+               description: "Mark the PR as AI-assisted and include AI disclosure text from the latest `brew wwdd` report."
         flag "--message=",
              description: "Override the generated commit subject for a single formula rewrite."
         flag "--style=",
@@ -34,6 +36,7 @@ module Homebrew
             apply: args.apply?,
             push: args.push?,
             pr: args.pr?,
+            ai: args.ai?,
             message: args.message,
             message_style: args.style&.to_sym || :auto,
             base_ref: args.base,

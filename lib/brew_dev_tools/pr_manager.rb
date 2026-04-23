@@ -74,29 +74,32 @@ module BrewDevTools
 
     def pr_body(plan)
       validation = ValidationStore.load(repo: @repo)
+      ai_disclosure = ai_disclosure(plan: plan, validation: validation)
       if @repo.homebrew_core?
-        filled_template = fill_homebrew_core_template(@repo.pull_request_template, validation)
+        filled_template = fill_homebrew_core_template(@repo.pull_request_template, validation, ai_disclosure[:enabled])
         [
           filled_template,
+          ai_disclosure[:body],
           "",
           "## Planned commits",
           *plan.formulas.map { |formula_plan| "- `#{formula_plan.subject}`" },
           "",
           "## Validation summary",
           validation_summary(validation),
-        ].join("\n")
+        ].reject(&:empty?).join("\n")
       else
         [
           "## Changed formulae",
           *plan.formulas.map { |formula_plan| "- `#{formula_plan.formula}` via `#{formula_plan.subject}`" },
           "",
+          ("## AI disclosure\n#{ai_disclosure[:body]}\n" if ai_disclosure[:enabled] && !ai_disclosure[:body].empty?),
           "## Validation summary",
           validation_summary(validation),
-        ].join("\n")
+        ].compact.join("\n")
       end
     end
 
-    def fill_homebrew_core_template(template, validation)
+    def fill_homebrew_core_template(template, validation, ai_enabled)
       template ||= <<~TEMPLATE
         -----
         - [ ] Have you followed the guidelines for contributing?
@@ -106,6 +109,8 @@ module BrewDevTools
         - [ ] Is your test running fine?
         - [ ] Does your build pass brew audit?
         -----
+        - [ ] AI was used to generate or assist with generating this PR. *Please specify below how you used AI to help you, and what steps you have taken to manually verify the changes*.
+        -----
       TEMPLATE
 
       checks = {
@@ -113,12 +118,29 @@ module BrewDevTools
         "built your formula locally" => validation_step_passed?(validation, "install"),
         "test running fine" => validation_step_passed?(validation, "test"),
         "build pass `brew audit" => validation_step_passed?(validation, "audit"),
+        "AI was used to generate or assist" => ai_enabled,
       }
 
       template.lines.map do |line|
         replacement = checks.find { |needle, passed| passed && line.include?(needle) }
         replacement ? line.sub("- [ ]", "- [x]") : line
       end.join
+    end
+
+    def ai_disclosure(plan:, validation:)
+      return { enabled: false, body: "" } unless plan.ai
+
+      ai = validation && validation["ai"].is_a?(Hash) ? validation["ai"] : {}
+      tool = ai["tool"] || "AI tooling"
+      detail = ai["detail"] || "AI assistance was used while preparing this change."
+      {
+        enabled: true,
+        body: [
+          "AI/LLM usage: #{tool}.",
+          detail,
+          "I manually reviewed the generated changes and can address follow-up review feedback myself.",
+        ].join(" "),
+      }
     end
 
     def validation_summary(validation)

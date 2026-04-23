@@ -20,6 +20,7 @@ module BrewDevTools
       :upstream_remote,
       :backup_branch,
       :message_style,
+      :ai,
       :formulas,
       keyword_init: true,
     )
@@ -37,6 +38,7 @@ module BrewDevTools
       @message_style = options.fetch(:message_style, :auto)
       @base_ref = options[:base_ref]
       @formulas = options.fetch(:formulas, [])
+      @ai = options.fetch(:ai, false)
       @pr_manager = options[:pr_manager] || PRManager.new(repo: repo, shell: shell, stdout: stdout)
       @time_source = options[:time_source] || -> { Time.now.utc }
     end
@@ -85,6 +87,7 @@ module BrewDevTools
         upstream_remote: change_set.upstream_remote,
         backup_branch:  backup_branch_name(change_set.branch),
         message_style:  resolved_style,
+        ai:             @ai,
         formulas:       formula_plans,
       )
     end
@@ -131,6 +134,7 @@ module BrewDevTools
       @stdout.puts
       @stdout.puts("Push: #{@push ? "git push --force-with-lease #{plan.upstream_remote} #{plan.branch}" : 'disabled'}")
       @stdout.puts("PR:   #{@pr ? 'create/update through gh' : 'disabled'}")
+      @stdout.puts("AI:   #{plan.ai ? 'enabled' : 'disabled'}")
       @stdout.puts("Backup branch: #{plan.backup_branch}") if @apply
       @stdout.puts
     end
