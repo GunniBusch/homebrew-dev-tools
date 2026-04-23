@@ -8,6 +8,7 @@ require "fileutils"
 
 require_relative "brew_dev_tools/errors"
 require_relative "brew_dev_tools/shell"
+require_relative "brew_dev_tools/ai_context"
 require_relative "brew_dev_tools/formula_inspector"
 require_relative "brew_dev_tools/bottles"
 require_relative "brew_dev_tools/commit_subject"

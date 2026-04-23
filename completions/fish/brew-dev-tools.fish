@@ -20,6 +20,7 @@ set -l __brew_dev_tools_bottle_tags all arm64_tahoe tahoe arm64_sequoia sequoia 
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l apply -d "Rewrite the current branch from its merge-base"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l push -d "Push the rewritten branch with --force-with-lease"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l pr -d "Create or update the GitHub pull request after rewriting"
+complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l ai -d "Mark the PR as AI-assisted and include AI disclosure text"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l message -r -d "Override the generated commit subject"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l style -r -a "auto homebrew conventional" -d "Commit/PR title style"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l base -r -a "(__fish_brew_dev_tools_git_refs)" -d "Override the base branch ref"

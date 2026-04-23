@@ -24,7 +24,7 @@ class CompletionsTest < BrewDevToolsTestCase
 
   def test_completion_options_match_command_interfaces
     expected_options = {
-      "prsync" => %w[--apply --push --pr --message --style --base],
+      "prsync" => %w[--apply --push --pr --ai --message --style --base],
       "wwdd" => %w[--online --install --base],
       "bottles" => %w[--compare --contents --tag --against-tag --urls],
     }

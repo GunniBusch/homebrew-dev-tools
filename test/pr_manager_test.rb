@@ -6,13 +6,15 @@ class PRManagerTest < BrewDevToolsTestCase
   class FakeRepo
     attr_reader :path
 
-    def initialize(path:, head_owner: nil)
+    def initialize(path:, head_owner: nil, homebrew_core: false, pull_request_template: nil)
       @path = path
       @head_owner = head_owner
+      @homebrew_core = homebrew_core
+      @pull_request_template = pull_request_template
     end
 
     def homebrew_core?
-      false
+      @homebrew_core
     end
 
     def default_branch_name
@@ -25,6 +27,10 @@ class PRManagerTest < BrewDevToolsTestCase
 
     def head_owner_for_branch(_branch)
       @head_owner
+    end
+
+    def pull_request_template
+      @pull_request_template
     end
   end
 
@@ -75,6 +81,7 @@ class PRManagerTest < BrewDevToolsTestCase
         upstream_remote: "origin",
         backup_branch: "backup/feature",
         message_style: :conventional,
+        ai: false,
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -115,6 +122,7 @@ class PRManagerTest < BrewDevToolsTestCase
         upstream_remote: "origin",
         backup_branch: "backup/feature",
         message_style: :conventional,
+        ai: false,
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -151,6 +159,7 @@ class PRManagerTest < BrewDevToolsTestCase
         upstream_remote: "origin",
         backup_branch: "backup/feature",
         message_style: :conventional,
+        ai: false,
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -171,6 +180,72 @@ class PRManagerTest < BrewDevToolsTestCase
       refute_nil create
       assert_includes create, "--head"
       assert_includes create, "gunnibusch:feature"
+    end
+  end
+
+  def test_marks_homebrew_core_ai_checkbox_when_opted_in
+    with_tmpdir do |dir|
+      repo = FakeRepo.new(
+        path: dir.to_s,
+        homebrew_core: true,
+        pull_request_template: <<~TEMPLATE,
+          -----
+          - [ ] Have you ensured that your commits follow the [commit style guide](https://docs.brew.sh/Formula-Cookbook#commit)?
+          - [ ] Is your test running fine `brew test <formula>`?
+          -----
+          - [ ] AI was used to generate or assist with generating this PR. *Please specify below how you used AI to help you, and what steps you have taken to manually verify the changes*.
+          -----
+        TEMPLATE
+      )
+      shell = CaptureShell.new
+      manager = BrewDevTools::PRManager.new(repo: repo, shell: shell, stdout: StringIO.new)
+      BrewDevTools::ValidationStore.save(
+        repo: repo,
+        report: {
+          "formulas" => [
+            {
+              "formula" => "foo",
+              "steps" => [
+                { "name" => "test", "success" => true },
+              ],
+            },
+          ],
+          "ai" => {
+            "detected" => true,
+            "tool" => "Codex",
+            "source" => "env",
+            "detail" => "Detected via CODEX_SHELL.",
+          },
+        },
+      )
+      plan = BrewDevTools::Prsync::Plan.new(
+        branch: "feature",
+        base_ref: "origin/main",
+        base_sha: "abc123",
+        head_sha: "def456",
+        upstream_remote: "origin",
+        backup_branch: "backup/feature",
+        message_style: :homebrew,
+        ai: true,
+        formulas: [
+          BrewDevTools::Prsync::FormulaPlan.new(
+            formula: "foo",
+            path: "Formula/foo.rb",
+            subject: "foo 1.2.3",
+            subject_kind: :version_bump,
+            generated_summary: false,
+            operations: ["create single commit"],
+          ),
+        ],
+      )
+
+      manager.sync_pr!(plan)
+
+      create = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "create"] }
+      body = create[create.index("--body") + 1]
+      assert_includes body, "- [x] AI was used to generate or assist with generating this PR."
+      assert_includes body, "AI/LLM usage: Codex."
+      assert_includes body, "I manually reviewed the generated changes"
     end
   end
 end

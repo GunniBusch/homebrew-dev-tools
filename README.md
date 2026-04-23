@@ -39,6 +39,9 @@ Highlights:
 - Supports explicit style overrides with `--style=auto|homebrew|conventional`.
 - Signs generated commits with `git commit -S` by default. Only the test
   harness disables signing inside temporary repositories.
+- `brew wwdd` stores detected AI-shell metadata in its validation report.
+- `brew prsync --ai` uses that stored metadata to add Homebrew AI/LLM
+  disclosure text and check the AI checkbox in `homebrew/core` PRs.
 - Uses preview-first mode unless `--apply` is passed.
 - When rewriting an existing single-formula commit, `prsync` preserves that
   commit title by default unless you pass `--message`.
@@ -56,6 +59,7 @@ brew prsync
 brew prsync --apply
 brew prsync --apply --push
 brew prsync --apply --push --pr
+brew prsync --apply --push --pr --ai
 brew prsync --style=homebrew
 brew prsync --style=conventional
 brew prsync --message="fix(foo): adjust test dependency" foo
@@ -113,7 +117,9 @@ Pass `--install` when you also want:
 `HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source <formula>`
 
 The latest validation report is stored in `.git/brew-dev-tools/wwdd-last.json`
-so `brew prsync --pr` can include it in the PR body.
+so `brew prsync --pr` can include it in the PR body. That report also stores
+detected AI-shell metadata, which `brew prsync --ai` uses for Homebrew AI/LLM
+disclosure text.
 
 Example:
 

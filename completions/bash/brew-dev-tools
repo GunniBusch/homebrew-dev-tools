@@ -111,7 +111,7 @@ __brew_dev_tools_complete_formula_or_option() {
 
 _brew_prsync() {
   COMPREPLY=()
-  __brew_dev_tools_complete_formula_or_option "--apply --push --pr --message= --style= --base= --help"
+  __brew_dev_tools_complete_formula_or_option "--apply --push --pr --ai --message= --style= --base= --help"
 }
 
 _brew_wwdd() {
