@@ -87,7 +87,7 @@ module BrewDevTools
         upstream_remote: change_set.upstream_remote,
         backup_branch:  backup_branch_name(change_set.branch),
         message_style:  resolved_style,
-        ai:             @ai,
+        ai:             resolved_ai,
         formulas:       formula_plans,
       )
     end
@@ -162,6 +162,18 @@ module BrewDevTools
       return @message_style unless @message_style == :auto
 
       repo.homebrew_core? ? :homebrew : :conventional
+    end
+
+    def resolved_ai
+      return true if @ai
+
+      validation = ValidationStore.load(repo: repo)
+      validation_ai_detected?(validation)
+    end
+
+    def validation_ai_detected?(validation)
+      ai = validation && validation["ai"]
+      ai.is_a?(Hash) && ai["detected"]
     end
   end
 end
