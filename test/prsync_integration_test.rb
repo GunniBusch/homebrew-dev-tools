@@ -218,4 +218,28 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
       assert_equal ["ripgrep 14.1.1"], history
     end
   end
+
+  def test_rejects_reference_flags_without_pr
+    with_tmpdir do |dir|
+      init_repo(dir)
+      remote = init_bare_remote(dir)
+      attach_origin(dir, remote)
+      commit_formula(dir, "foo", formula_content("foo", "1.0.0"), "foo 1.0.0 (new formula)")
+      run_cmd(dir, "git", "push", "-u", "origin", "master")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+      File.write(dir/"Formula/foo.rb", formula_content("foo", "1.0.1"))
+
+      repo = BrewDevTools::GitRepo.new(path: dir, sign_commits: false)
+
+      error = assert_raises(BrewDevTools::ValidationError) do
+        BrewDevTools::Prsync.new(
+          repo: repo,
+          stdout: StringIO.new,
+          options: { closes: ["#123"] },
+        ).run
+      end
+
+      assert_equal "`--closes`, `--fixes`, and `--ref` require `--pr`.", error.message
+    end
+  end
 end

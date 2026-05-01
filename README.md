@@ -51,6 +51,8 @@ Highlights:
   `OWNER:branch` when the branch tracks a GitHub fork remote.
 - `--pr` is branch-based: if GitHub already has an open PR for the current
   branch, `prsync` updates it; otherwise it creates a new PR for that branch.
+- `--closes`, `--fixes`, and `--ref` append GitHub footer lines to the PR body
+  and require `--pr`.
 - In fork workflows, computes the merge-base against the upstream/non-fork
   remote by default. `--base` is only needed when you want to opt out of that.
 
@@ -62,6 +64,7 @@ brew prsync --apply
 brew prsync --apply --push
 brew prsync --apply --push --pr
 brew prsync --apply --push --pr --ai
+brew prsync --apply --push --pr --closes=123 --fixes=#456 --ref=owner/repo#789
 brew prsync --style=homebrew
 brew prsync --style=conventional
 brew prsync --message="fix(foo): adjust test dependency" foo

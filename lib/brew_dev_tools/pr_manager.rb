@@ -75,6 +75,7 @@ module BrewDevTools
     def pr_body(plan)
       validation = ValidationStore.load(repo: @repo)
       ai_disclosure = ai_disclosure(plan: plan, validation: validation)
+      footer_lines = footer_lines(plan)
       if @repo.homebrew_core?
         filled_template = fill_homebrew_core_template(@repo.pull_request_template, validation, ai_disclosure[:enabled])
         [
@@ -86,6 +87,8 @@ module BrewDevTools
           "",
           "## Validation summary",
           validation_summary(validation),
+          "",
+          *footer_lines,
         ].reject(&:empty?).join("\n")
       else
         [
@@ -95,6 +98,8 @@ module BrewDevTools
           ("## AI disclosure\n#{ai_disclosure[:body]}\n" if ai_disclosure[:enabled] && !ai_disclosure[:body].empty?),
           "## Validation summary",
           validation_summary(validation),
+          "",
+          *footer_lines,
         ].compact.join("\n")
       end
     end
@@ -176,6 +181,31 @@ module BrewDevTools
       end
 
       "#{prefix}: update #{plan.formulas.length} formula#{plan.formulas.length == 1 ? '' : 'e'}"
+    end
+
+    def footer_lines(plan)
+      lines = []
+      lines.concat(normalize_references(plan.closes).map { |value| "Closes #{value}" })
+      lines.concat(normalize_references(plan.fixes).map { |value| "Fixes #{value}" })
+      lines.concat(normalize_references(plan.references).map { |value| "References #{value}" })
+      lines
+    end
+
+    def normalize_references(values)
+      values.filter_map do |value|
+        normalize_reference(value)
+      end.uniq
+    end
+
+    def normalize_reference(value)
+      trimmed = value.to_s.strip
+      return nil if trimmed.empty?
+      return trimmed if trimmed.match?(%r{\Ahttps://github\.com/[^/\s]+/[^/\s]+/(?:issues|pull)/\d+\z}i)
+      return trimmed if trimmed.match?(%r{\A[^/\s]+/[^#\s]+#\d+\z})
+      return trimmed if trimmed.match?(/\A#\d+\z/)
+      return "##{trimmed}" if trimmed.match?(/\A\d+\z/)
+
+      trimmed
     end
   end
 end
