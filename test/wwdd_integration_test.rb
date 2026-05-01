@@ -33,7 +33,10 @@ class WwddIntegrationTest < BrewDevToolsTestCase
         repo: repo,
         shell: shell,
         stdout: StringIO.new,
-        options: { brew_executable: "brew" },
+        options: {
+          brew_executable: "brew",
+          ai_context: BrewDevTools::AIContext.new(env: {}, process_ancestry_loader: ->(_pid) { [] }),
+        },
       ).run
 
       logged = File.read(log_file).lines.map(&:strip)

@@ -19,7 +19,7 @@ _brew_prsync() {
     "--apply[Rewrite the current branch from its merge-base]" \
     "--push[Push the rewritten branch with --force-with-lease]" \
     "--pr[Create or update the GitHub pull request after rewriting]" \
-    "--ai[Mark the PR as AI-assisted and include AI disclosure text from the latest brew wwdd report]" \
+    "--ai[Force AI-assisted PR disclosure even if no detected brew wwdd AI report is present]" \
     "--closes=[Comma-separated issues or PRs to add as Closes footer lines in the PR body]:targets:" \
     "--fixes=[Comma-separated issues or PRs to add as Fixes footer lines in the PR body]:targets:" \
     "--ref=[Comma-separated issues or PRs to add as References footer lines in the PR body]:targets:" \

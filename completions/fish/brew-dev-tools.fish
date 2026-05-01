@@ -20,7 +20,7 @@ set -l __brew_dev_tools_bottle_tags all arm64_tahoe tahoe arm64_sequoia sequoia 
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l apply -d "Rewrite the current branch from its merge-base"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l push -d "Push the rewritten branch with --force-with-lease"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l pr -d "Create or update the GitHub pull request after rewriting"
-complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l ai -d "Mark the PR as AI-assisted and include AI disclosure text"
+complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l ai -d "Force AI-assisted PR disclosure without detected wwdd AI context"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l closes -r -d "Comma-separated issues or PRs to add as Closes footer lines"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l fixes -r -d "Comma-separated issues or PRs to add as Fixes footer lines"
 complete -c brew -n "__fish_brew_dev_tools_using_command prsync" -l ref -r -d "Comma-separated issues or PRs to add as References footer lines"

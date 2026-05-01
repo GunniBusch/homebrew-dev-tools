@@ -40,8 +40,10 @@ Highlights:
 - Signs generated commits with `git commit -S` by default. Only the test
   harness disables signing inside temporary repositories.
 - `brew wwdd` stores detected AI-shell metadata in its validation report.
-- `brew prsync --ai` uses that stored metadata to add Homebrew AI/LLM
-  disclosure text and check the AI checkbox in `homebrew/core` PRs.
+- If `brew wwdd` detects AI usage, `brew prsync` always carries that forward
+  into Homebrew AI/LLM disclosure text and checkbox state.
+- `brew prsync --ai` force-enables AI disclosure when no detected `brew wwdd`
+  report is available.
 - Uses preview-first mode unless `--apply` is passed.
 - When rewriting an existing single-formula commit, `prsync` preserves that
   commit title by default unless you pass `--message`.
@@ -121,8 +123,10 @@ Pass `--install` when you also want:
 
 The latest validation report is stored in `.git/brew-dev-tools/wwdd-last.json`
 so `brew prsync --pr` can include it in the PR body. That report also stores
-detected AI-shell metadata, which `brew prsync --ai` uses for Homebrew AI/LLM
-disclosure text.
+detected AI-shell metadata. If AI was detected by `brew wwdd`, `brew prsync`
+will always use that information for Homebrew AI/LLM disclosure, even without
+`--ai`. Use `brew prsync --ai` to force disclosure when no detected AI report
+is available.
 
 Example:
 

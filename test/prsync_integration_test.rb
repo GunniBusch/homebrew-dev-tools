@@ -154,6 +154,45 @@ class PrsyncIntegrationTest < BrewDevToolsTestCase
     end
   end
 
+  def test_uses_detected_wwdd_ai_context_without_ai_flag
+    with_tmpdir do |dir|
+      init_repo(dir)
+      remote = init_bare_remote(dir)
+      attach_origin(dir, remote)
+      commit_formula(dir, "foo", formula_content("foo", "1.0.0"), "foo 1.0.0 (new formula)")
+      run_cmd(dir, "git", "push", "-u", "origin", "master")
+      run_cmd(dir, "git", "checkout", "-b", "feature")
+      File.write(dir/"Formula/foo.rb", formula_content("foo", "1.0.1"))
+
+      repo = BrewDevTools::GitRepo.new(path: dir, sign_commits: false)
+      BrewDevTools::ValidationStore.save(
+        repo: repo,
+        report: {
+          "formulas" => [
+            {
+              "formula" => "foo",
+              "steps" => [
+                { "name" => "test", "success" => true },
+              ],
+            },
+          ],
+          "ai" => {
+            "detected" => true,
+            "tool" => "Codex",
+            "source" => "env",
+            "detail" => "Detected via CODEX_SHELL.",
+          },
+        },
+      )
+
+      plan = BrewDevTools::Prsync.new(repo: repo, stdout: StringIO.new).build_plan(
+        repo.inspect_change_set(formulas: [], base_ref: nil),
+      )
+
+      assert_equal true, plan.ai
+    end
+  end
+
   def test_rewrites_nested_formula_paths
     with_tmpdir do |dir|
       init_repo(dir)

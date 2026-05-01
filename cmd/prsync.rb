@@ -17,7 +17,7 @@ module Homebrew
         switch "--pr",
                description: "Create or update the GitHub pull request after rewriting."
         switch "--ai",
-               description: "Mark the PR as AI-assisted and include AI disclosure text from the latest `brew wwdd` report."
+               description: "Force AI-assisted PR disclosure even if no detected `brew wwdd` AI report is present."
         comma_array "--closes",
                     description: "Comma-separated issues or PRs to add as `Closes ...` footer lines in the PR body. Requires `--pr`."
         comma_array "--fixes",
