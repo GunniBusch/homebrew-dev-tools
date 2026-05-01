@@ -21,6 +21,9 @@ module BrewDevTools
       :backup_branch,
       :message_style,
       :ai,
+      :closes,
+      :fixes,
+      :references,
       :formulas,
       keyword_init: true,
     )
@@ -39,11 +42,15 @@ module BrewDevTools
       @base_ref = options[:base_ref]
       @formulas = options.fetch(:formulas, [])
       @ai = options.fetch(:ai, false)
+      @closes = options.fetch(:closes, [])
+      @fixes = options.fetch(:fixes, [])
+      @references = options.fetch(:references, [])
       @pr_manager = options[:pr_manager] || PRManager.new(repo: repo, shell: shell, stdout: stdout)
       @time_source = options[:time_source] || -> { Time.now.utc }
     end
 
     def run
+      validate_pr_options!
       change_set = repo.inspect_change_set(formulas: @formulas, base_ref: @base_ref)
       plan = build_plan(change_set)
       print_preview(plan)
@@ -88,11 +95,20 @@ module BrewDevTools
         backup_branch:  backup_branch_name(change_set.branch),
         message_style:  resolved_style,
         ai:             @ai,
+        closes:         normalize_references(@closes),
+        fixes:          normalize_references(@fixes),
+        references:     normalize_references(@references),
         formulas:       formula_plans,
       )
     end
 
     private
+
+    def validate_pr_options!
+      return if @pr || [@closes, @fixes, @references].all?(&:empty?)
+
+      raise ValidationError, "`--closes`, `--fixes`, and `--ref` require `--pr`."
+    end
 
     def resolved_subject(formula_state:, suggestion:, single_formula_override:)
       return [@message, false] if single_formula_override
@@ -135,6 +151,7 @@ module BrewDevTools
       @stdout.puts("Push: #{@push ? "git push --force-with-lease #{plan.upstream_remote} #{plan.branch}" : 'disabled'}")
       @stdout.puts("PR:   #{@pr ? 'create/update through gh' : 'disabled'}")
       @stdout.puts("AI:   #{plan.ai ? 'enabled' : 'disabled'}")
+      print_reference_preview(plan)
       @stdout.puts("Backup branch: #{plan.backup_branch}") if @apply
       @stdout.puts
     end
@@ -162,6 +179,32 @@ module BrewDevTools
       return @message_style unless @message_style == :auto
 
       repo.homebrew_core? ? :homebrew : :conventional
+    end
+
+    def print_reference_preview(plan)
+      return if plan.closes.empty? && plan.fixes.empty? && plan.references.empty?
+
+      @stdout.puts("PR footers:")
+      plan.closes.each { |value| @stdout.puts("  Closes #{value}") }
+      plan.fixes.each { |value| @stdout.puts("  Fixes #{value}") }
+      plan.references.each { |value| @stdout.puts("  References #{value}") }
+    end
+
+    def normalize_references(values)
+      Array(values).filter_map do |value|
+        normalize_reference(value)
+      end.uniq
+    end
+
+    def normalize_reference(value)
+      trimmed = value.to_s.strip
+      return nil if trimmed.empty?
+      return trimmed if trimmed.match?(%r{\Ahttps://github\.com/[^/\s]+/[^/\s]+/(?:issues|pull)/\d+\z}i)
+      return trimmed if trimmed.match?(%r{\A[^/\s]+/[^#\s]+#\d+\z})
+      return trimmed if trimmed.match?(/\A#\d+\z/)
+      return "##{trimmed}" if trimmed.match?(/\A\d+\z/)
+
+      trimmed
     end
   end
 end

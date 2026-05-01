@@ -82,6 +82,9 @@ class PRManagerTest < BrewDevToolsTestCase
         backup_branch: "backup/feature",
         message_style: :conventional,
         ai: false,
+        closes: [],
+        fixes: [],
+        references: [],
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -123,6 +126,9 @@ class PRManagerTest < BrewDevToolsTestCase
         backup_branch: "backup/feature",
         message_style: :conventional,
         ai: false,
+        closes: [],
+        fixes: [],
+        references: [],
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -160,6 +166,9 @@ class PRManagerTest < BrewDevToolsTestCase
         backup_branch: "backup/feature",
         message_style: :conventional,
         ai: false,
+        closes: [],
+        fixes: [],
+        references: [],
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -227,6 +236,9 @@ class PRManagerTest < BrewDevToolsTestCase
         backup_branch: "backup/feature",
         message_style: :homebrew,
         ai: true,
+        closes: [],
+        fixes: [],
+        references: [],
         formulas: [
           BrewDevTools::Prsync::FormulaPlan.new(
             formula: "foo",
@@ -246,6 +258,46 @@ class PRManagerTest < BrewDevToolsTestCase
       assert_includes body, "- [x] AI was used to generate or assist with generating this PR."
       assert_includes body, "AI/LLM usage: Codex."
       assert_includes body, "I manually reviewed the generated changes"
+    end
+  end
+
+  def test_appends_reference_footer_lines_to_pr_body
+    with_tmpdir do |dir|
+      repo = FakeRepo.new(path: dir.to_s)
+      shell = CaptureShell.new
+      manager = BrewDevTools::PRManager.new(repo: repo, shell: shell, stdout: StringIO.new)
+      plan = BrewDevTools::Prsync::Plan.new(
+        branch: "feature",
+        base_ref: "origin/main",
+        base_sha: "abc123",
+        head_sha: "def456",
+        upstream_remote: "origin",
+        backup_branch: "backup/feature",
+        message_style: :conventional,
+        ai: false,
+        closes: ["123", "owner/repo#45"],
+        fixes: ["#88"],
+        references: ["https://github.com/Homebrew/homebrew-core/pull/123456"],
+        formulas: [
+          BrewDevTools::Prsync::FormulaPlan.new(
+            formula: "foo",
+            path: "Formula/foo.rb",
+            subject: "chore(foo): update to 1.2.3",
+            subject_kind: :version_bump,
+            generated_summary: false,
+            operations: ["create single commit"],
+          ),
+        ],
+      )
+
+      manager.sync_pr!(plan)
+
+      create = shell.commands.find { |command| command[0, 3] == ["gh", "pr", "create"] }
+      body = create[create.index("--body") + 1]
+      assert_includes body, "Closes #123"
+      assert_includes body, "Closes owner/repo#45"
+      assert_includes body, "Fixes #88"
+      assert_includes body, "References https://github.com/Homebrew/homebrew-core/pull/123456"
     end
   end
 end

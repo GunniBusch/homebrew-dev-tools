@@ -18,6 +18,12 @@ module Homebrew
                description: "Create or update the GitHub pull request after rewriting."
         switch "--ai",
                description: "Mark the PR as AI-assisted and include AI disclosure text from the latest `brew wwdd` report."
+        comma_array "--closes",
+                    description: "Comma-separated issues or PRs to add as `Closes ...` footer lines in the PR body. Requires `--pr`."
+        comma_array "--fixes",
+                    description: "Comma-separated issues or PRs to add as `Fixes ...` footer lines in the PR body. Requires `--pr`."
+        comma_array "--ref",
+                    description: "Comma-separated issues or PRs to add as `References ...` footer lines in the PR body. Requires `--pr`."
         flag "--message=",
              description: "Override the generated commit subject for a single formula rewrite."
         flag "--style=",
@@ -37,6 +43,9 @@ module Homebrew
             push: args.push?,
             pr: args.pr?,
             ai: args.ai?,
+            closes: args.closes || [],
+            fixes: args.fixes || [],
+            references: args.ref || [],
             message: args.message,
             message_style: args.style&.to_sym || :auto,
             base_ref: args.base,
