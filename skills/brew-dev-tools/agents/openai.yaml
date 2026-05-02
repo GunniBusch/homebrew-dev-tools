@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brew Dev Tools"
+  short_description: "Homebrew contributor workflow helpers"
+  default_prompt: "Use $brew-dev-tools to prepare a Homebrew formula contribution with brew-dev-tools commands."

@@ -241,3 +241,10 @@ Run the tests with:
 ```sh
 brew ruby -- -Ilib:test -e 'Dir["test/*_test.rb"].sort.each { |file| require File.expand_path(file) }'
 ```
+
+## Repo Skill
+
+This repo also ships a repo-local Codex skill at
+[`skills/brew-dev-tools/SKILL.md`](/Users/leonadomaitis/pfusch/brew-dev-tools/skills/brew-dev-tools/SKILL.md).
+Use `$brew-dev-tools` when you want an LLM to follow this tap's contributor
+workflow for `brew wwdd`, `brew prsync`, and `brew bottles`.
